@@ -1,0 +1,2 @@
+Content/Game/**/*.uasset filter=lfs diff=lfs merge=lfs -text
+Content/Game/**/*.umap filter=lfs diff=lfs merge=lfs -text
