@@ -78,6 +78,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="EnhancedInput")
 	class UInputAction* IA_TestAction;
 	void TestInput();
+	
 	//////Border
 
 

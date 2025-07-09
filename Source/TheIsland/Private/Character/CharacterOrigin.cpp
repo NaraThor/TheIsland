@@ -36,7 +36,6 @@ ACharacterOrigin::ACharacterOrigin()
 	CollisionInteract->SetupAttachment(GetCapsuleComponent());
 	CollisionInteract->InitSphereRadius(75.f);
 	CollisionInteract->SetRelativeLocation(FVector(80.f, 0.f, -60.f));
-	
 	CollisionInteract->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CollisionInteract->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionInteract->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
@@ -94,6 +93,7 @@ void ACharacterOrigin::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		Input->BindAction(IA_TestAction,ETriggerEvent::Started,this,&ACharacterOrigin::TestInput);
 		///IsTest
 		
+		
 		//Movement Character
 		Input->BindAction(IA_CharacterMovement,ETriggerEvent::Triggered,this,&ACharacterOrigin::Character_Movement);
 		
@@ -105,6 +105,8 @@ void ACharacterOrigin::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		
 		//Interact Character
 		Input->BindAction(IA_CharacterInteract, ETriggerEvent::Started, this, &ACharacterOrigin::InteractScan);
+
+		
 	}
 	
 }
@@ -115,31 +117,9 @@ void ACharacterOrigin::TestInput()
 {
 
 	GEngine-> AddOnScreenDebugMessage(-1,5.0f,FColor::Red,"Test Input");
-	/////////////
-	//Click F to destroy item
-	if (CurrentScannedActors.Num() > 0)
-	{
-		AActor* Target = CurrentScannedActors[0];
-
-		if (IsValid(Target) && !Target->IsPendingKillPending())
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
-				FString::Printf(TEXT("Interaksi dengan: %s"), *Target->GetName()));
-
-			// Remove dulu sebelum destroy
-			CurrentScannedActors.Remove(Target);
-			Target->Destroy();
-		}
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Silver,
-			TEXT("Tidak ada target untuk interaksi."));
-	}
-	/////////////////
+	
 }
 ///Testo Border
-
 
 void ACharacterOrigin::Character_Movement(const FInputActionValue& InputValue)
 {
@@ -216,6 +196,25 @@ void ACharacterOrigin::InteractScan(const FInputActionValue& InputValue)
 			TEXT("Test Interact...."));
 
 	//Click F to destroy item
+	if (CurrentScannedActors.Num() > 0)
+	{
+		AActor* Target = CurrentScannedActors[0];
+
+		if (IsValid(Target) && !Target->IsPendingKillPending())
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
+				FString::Printf(TEXT("Interaksi dengan: %s"), *Target->GetName()));
+
+			// Remove dulu sebelum destroy
+			CurrentScannedActors.Remove(Target);
+			Target->Destroy();
+		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Silver,
+			TEXT("Tidak ada target untuk interaksi."));
+	}
 	
 		
 }
