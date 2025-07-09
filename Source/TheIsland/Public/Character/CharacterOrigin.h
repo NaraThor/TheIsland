@@ -40,7 +40,7 @@ protected:
 	
 	
 	UPROPERTY()
-	TSet<AActor*> ActorsScannedThisFrame;
+	TArray<AActor*> CurrentScannedActors;
 	
 	// Fungsi untuk bergerak maju/mundur
 	//Movement
@@ -70,6 +70,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category="EnhancedInput")
 	class UInputAction* IA_CharacterLook;
 
+	UPROPERTY(EditAnywhere, Category="EnhancedInput")
+	class UInputAction* IA_CharacterInteract;
 
 
 	/////Border
@@ -88,5 +90,9 @@ protected:
 	//This is Fungtion
 	UFUNCTION()
 	void OnScanOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnScanEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	
+	void InteractScan(const FInputActionValue& InputValue); // Tekan tombol F
 };

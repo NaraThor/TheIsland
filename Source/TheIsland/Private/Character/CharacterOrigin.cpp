@@ -54,8 +54,12 @@ void ACharacterOrigin::BeginPlay()
 	if (CollisionInteract)
 	{
 		CollisionInteract->OnComponentBeginOverlap.AddDynamic(this, &ACharacterOrigin::OnScanOverlap);
+
+		CollisionInteract->OnComponentEndOverlap.AddDynamic(this, &ACharacterOrigin::OnScanEndOverlap);
 	}
 
+
+	
 	
 }
 
@@ -64,7 +68,7 @@ void ACharacterOrigin::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	ActorsScannedThisFrame.Empty(); // Reset setiap frame
+	//CurrentScannedActors.Empty(); // Reset setiap frame
 }
 
 // Called to bind functionality to input
@@ -87,13 +91,20 @@ void ACharacterOrigin::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	if (UEnhancedInputComponent* Input = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		///IsTest
-		Input->BindAction(IA_TestAction,ETriggerEvent::Triggered,this,&ACharacterOrigin::TestInput);
+		Input->BindAction(IA_TestAction,ETriggerEvent::Started,this,&ACharacterOrigin::TestInput);
 		///IsTest
-
+		
+		//Movement Character
 		Input->BindAction(IA_CharacterMovement,ETriggerEvent::Triggered,this,&ACharacterOrigin::Character_Movement);
+		
+		//Jump Character
 		Input->BindAction(IA_CharacterJump,ETriggerEvent::Triggered,this,&ACharacterOrigin::Character_Jump);
+		
+		//Look Character
 		Input->BindAction(IA_CharacterLook,ETriggerEvent::Triggered,this,&ACharacterOrigin::Character_Look);
 		
+		//Interact Character
+		Input->BindAction(IA_CharacterInteract, ETriggerEvent::Started, this, &ACharacterOrigin::InteractScan);
 	}
 	
 }
@@ -104,6 +115,28 @@ void ACharacterOrigin::TestInput()
 {
 
 	GEngine-> AddOnScreenDebugMessage(-1,5.0f,FColor::Red,"Test Input");
+	/////////////
+	//Click F to destroy item
+	if (CurrentScannedActors.Num() > 0)
+	{
+		AActor* Target = CurrentScannedActors[0];
+
+		if (IsValid(Target) && !Target->IsPendingKillPending())
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow,
+				FString::Printf(TEXT("Interaksi dengan: %s"), *Target->GetName()));
+
+			// Remove dulu sebelum destroy
+			CurrentScannedActors.Remove(Target);
+			Target->Destroy();
+		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Silver,
+			TEXT("Tidak ada target untuk interaksi."));
+	}
+	/////////////////
 }
 ///Testo Border
 
@@ -150,42 +183,44 @@ void ACharacterOrigin::Character_Jump()
 void ACharacterOrigin::OnScanOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	//if (!OtherActor || OtherActor == this) return;
-	//FString DetectedName = OtherActor->GetName();
-	//if (OtherActor->IsA(APawn::StaticClass()))
-	//{
-		//if (OtherComp != OtherActor->GetRootComponent()) return;
-	//	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
-	//		FString::Printf(TEXT("Pawn Terdeteksi: %s"), *DetectedName));
-	//}
-	//else
-	//{
-		//if (OtherComp != OtherActor->GetRootComponent()) return;
-	//	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red,
-	//		FString::Printf(TEXT("Actor Terdeteksi: %s"), *DetectedName));
-	//}
-	
-
-
-	////////////////////////
 	if (!OtherActor || OtherActor == this) return;
 
-	// Cegah deteksi ganda
-	if (ActorsScannedThisFrame.Contains(OtherActor)) return;
-	ActorsScannedThisFrame.Add(OtherActor);
+	if (!CurrentScannedActors.Contains(OtherActor))
+	{
+		CurrentScannedActors.Add(OtherActor);
 
-	// Sekarang ini pasti hanya sekali per actor per frame
-	if (OtherActor->IsA(APawn::StaticClass()))
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
-			FString::Printf(TEXT("Pawn Terdeteksi: %s"), *OtherActor->GetName()));
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan,
-			FString::Printf(TEXT("Actor Terdeteksi: %s"), *OtherActor->GetName()));
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green,
+			FString::Printf(TEXT("Terdeteksi: %s"), *OtherActor->GetName()));
 	}
 }
+
+void ACharacterOrigin::OnScanEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+
+	if (!OtherActor || OtherActor == this) return;
+
+	if (CurrentScannedActors.Contains(OtherActor))
+	{
+		CurrentScannedActors.Remove(OtherActor);
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red,
+			FString::Printf(TEXT("Keluar dari scan: %s"), *OtherActor->GetName()));
+	}
+	
+}
+
+void ACharacterOrigin::InteractScan(const FInputActionValue& InputValue)
+{
+	//debug
+	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Blue,
+			TEXT("Test Interact...."));
+
+	//Click F to destroy item
+	
+		
+}
+
+
 
 
 
