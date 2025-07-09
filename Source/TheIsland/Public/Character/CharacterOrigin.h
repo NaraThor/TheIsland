@@ -7,6 +7,7 @@
 #include "InputActionValue.h"
 #include "CharacterOrigin.generated.h"
 
+class USphereComponent;
 
 UCLASS()
 class THEISLAND_API ACharacterOrigin : public ACharacter
@@ -16,6 +17,7 @@ class THEISLAND_API ACharacterOrigin : public ACharacter
 public:
 	// Sets default values for this character's properties
 	ACharacterOrigin();
+	
 
 	
 
@@ -32,7 +34,13 @@ protected:
 	UPROPERTY(EditAnywhere)
 	class USpringArmComponent* SpringArm;
 
-
+	//SphereTraceComponent
+	UPROPERTY(EditAnywhere)
+	class USphereComponent* CollisionInteract;
+	
+	
+	UPROPERTY()
+	TSet<AActor*> ActorsScannedThisFrame;
 	
 	// Fungsi untuk bergerak maju/mundur
 	//Movement
@@ -49,6 +57,7 @@ public:
 
 
 protected:
+	//Movement
 	UPROPERTY(EditAnywhere, Category="EnhancedInput")
 	class UInputMappingContext* InputMapping;
 	
@@ -62,6 +71,7 @@ protected:
 	class UInputAction* IA_CharacterLook;
 
 
+
 	/////Border
 	UPROPERTY(EditAnywhere, Category="EnhancedInput")
 	class UInputAction* IA_TestAction;
@@ -70,11 +80,13 @@ protected:
 
 
 
-
+	
 	void Character_Movement(const FInputActionValue& InputValue);
 	void Character_Look(const FInputActionValue& InputValue);
 	void Character_Jump();
-	
-	
+
+	//This is Fungtion
+	UFUNCTION()
+	void OnScanOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,bool bFromSweep, const FHitResult& SweepResult);
 	
 };
