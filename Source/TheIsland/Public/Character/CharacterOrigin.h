@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// CharacterOrigin.h
 
 #pragma once
 
@@ -8,6 +8,11 @@
 #include "CharacterOrigin.generated.h"
 
 class USphereComponent;
+class UCameraComponent;
+class USpringArmComponent;
+class UInputMappingContext;
+class UInputAction;
+class UScanItem_Component;
 
 UCLASS()
 class THEISLAND_API ACharacterOrigin : public ACharacter
@@ -15,85 +20,49 @@ class THEISLAND_API ACharacterOrigin : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ACharacterOrigin();
-	
-
-	
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// Properti hanya dapat diakses oleh kelas ini atau turunannya
+	UPROPERTY(EditAnywhere, Category = "Camera")
+	UCameraComponent* Camera;
 
-	// Kamera untuk karakter
-	UPROPERTY(EditAnywhere)
-	class UCameraComponent* Camera;
+	UPROPERTY(EditAnywhere, Category = "Camera")
+	USpringArmComponent* SpringArm;
 
-	UPROPERTY(EditAnywhere)
-	class USpringArmComponent* SpringArm;
+	UPROPERTY(EditAnywhere, Category = "Components")
+	UScanItem_Component* ScanComponent;
 
-	//SphereTraceComponent
-	UPROPERTY(EditAnywhere)
-	class USphereComponent* CollisionInteract;
-	
-	
-	UPROPERTY()
-	TArray<AActor*> CurrentScannedActors;
-	
-	// Fungsi untuk bergerak maju/mundur
-	//Movement
-	//Jump
-	//Crouch
+	// Enhanced Input
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	UInputMappingContext* InputMapping;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	UInputAction* IA_CharacterMovement;
 
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	UInputAction* IA_CharacterJump;
 
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	UInputAction* IA_CharacterLook;
 
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	UInputAction* IA_CharacterInteract;
 
-protected:
-	//Movement
-	UPROPERTY(EditAnywhere, Category="EnhancedInput")
-	class UInputMappingContext* InputMapping;
-	
-	UPROPERTY(EditAnywhere, Category="EnhancedInput")
-	class UInputAction* IA_CharacterMovement;
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	UInputAction* IA_TestAction;
 
-	UPROPERTY(EditAnywhere, Category="EnhancedInput")
-	class UInputAction* IA_CharacterJump;
-	
-	UPROPERTY(EditAnywhere, Category="EnhancedInput")
-	class UInputAction* IA_CharacterLook;
-
-	UPROPERTY(EditAnywhere, Category="EnhancedInput")
-	class UInputAction* IA_CharacterInteract;
-
-
-	/////Border
-	UPROPERTY(EditAnywhere, Category="EnhancedInput")
-	class UInputAction* IA_TestAction;
-	void TestInput();
-	
-	//////Border
-
-
-
-	
+	// Movement
 	void Character_Movement(const FInputActionValue& InputValue);
 	void Character_Look(const FInputActionValue& InputValue);
 	void Character_Jump();
 
-	//This is Fungtion
-	UFUNCTION()
-	void OnScanOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,bool bFromSweep, const FHitResult& SweepResult);
+	// Interaction
+	void InteractScan(const FInputActionValue& InputValue);
+	void TestInput(); // Tombol test input
 
-	UFUNCTION()
-	void OnScanEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
-	void InteractScan(const FInputActionValue& InputValue); // Tekan tombol F
+public:
+	virtual void Tick(float DeltaTime) override;
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 };
