@@ -2,9 +2,9 @@
 
 
 #include "CharacterComponent/ScanItem_Component.h"
-
 #include "Components/SphereComponent.h"
 #include "Engine/Engine.h"
+#include "Inventory/Item/ItemOrigin.h"
 
 // Sets default values for this component's properties
 UScanItem_Component::UScanItem_Component()
@@ -56,9 +56,19 @@ void UScanItem_Component::Interact()
 		AActor* Target = ScannedActors[0];
 		if (IsValid(Target))
 		{
+			// Cast ke AItemOrigin
+			if (AItemOrigin* ItemActor = Cast<AItemOrigin>(Target))
+			{
+				if (ItemActor->ItemData)
+				{
+					FString ItemID = ItemActor->ItemData->ItemID.ToString();
+					GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
+						FString::Printf(TEXT("ID_Item: %s"), *ItemID));
+				}
+			}
+
+			// Optional: hancurkan item setelah interaksi
 			ScannedActors.RemoveAt(0);
-			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
-				FString::Printf(TEXT("Interact: %s"), *Target->GetName()));
 			Target->Destroy();
 		}
 	}
@@ -67,6 +77,7 @@ void UScanItem_Component::Interact()
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Silver, TEXT("No actor to interact."));
 	}
 }
+
 
 // Fungsi ketika objek masuk area scan
 void UScanItem_Component::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
