@@ -7,12 +7,14 @@
 #include "InputActionValue.h"
 #include "CharacterOrigin.generated.h"
 
+class UInventory_Component;
 class USphereComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputMappingContext;
 class UInputAction;
 class UScanItem_Component;
+class UUI_Component;
 
 UCLASS()
 class THEISLAND_API ACharacterOrigin : public ACharacter
@@ -31,8 +33,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	USpringArmComponent* SpringArm;
 
-	UPROPERTY(EditAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UScanItem_Component* ScanComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UInventory_Component* InventoryComponet;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UUI_Component* UIComponent;
 
 	// Enhanced Input
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")

@@ -1,34 +1,60 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Inventory_Component.cpp
 
 
 #include "CharacterComponent/Inventory_Component.h"
 
-// Sets default values for this component's properties
 UInventory_Component::UInventory_Component()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
-
-// Called when the game starts
 void UInventory_Component::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
-	
+	InitializeInventory(8); // 8 slot
+	AddItem("Wood_01", 5);
+	AddItem("Apple_01", 2);
+	AddItem("Wood_01", 3); // harus stack ke slot pertama
 }
 
-
-// Called every frame
-void UInventory_Component::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UInventory_Component::InitializeInventory(int32 Size)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Slots.SetNum(Size);
+}
 
-	// ...
+bool UInventory_Component::AddItem(FName ItemID, int32 Quantity)
+{
+	if (Quantity <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid Quantity: %d"), Quantity);
+		return false;
+	}
+
+	// Cek stack dulu
+	for (FInventorySlot& Slot : Slots)
+	{
+		if (Slot.ItemID == ItemID)
+		{
+			Slot.Quantity += Quantity;
+			UE_LOG(LogTemp, Warning, TEXT("Item %s stacked. New Quantity: %d"), *ItemID.ToString(), Slot.Quantity);
+			return true;
+		}
+	}
+
+	// Cari slot kosong
+	for (FInventorySlot& Slot : Slots)
+	{
+		if (Slot.ItemID.IsNone())
+		{
+			Slot.ItemID = ItemID;
+			Slot.Quantity = Quantity;
+			UE_LOG(LogTemp, Warning, TEXT("Item %s added to empty slot. Quantity: %d"), *ItemID.ToString(), Quantity);
+			return true;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Inventory full. Item %s could not be added."), *ItemID.ToString());
+	return false;
 }
 

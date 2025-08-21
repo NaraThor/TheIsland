@@ -57,45 +57,9 @@ void UScanItem_Component::OnScanEndOverlap(UPrimitiveComponent* OverlappedComp,
         FString::Printf(TEXT("Out of range: %s"), *OtherActor->GetName()));
 }
 
-void UScanItem_Component::Interact()
+AActor* UScanItem_Component::GetCurrentTarget() const
 {
-    if (ScannedActors.Num() == 0) return;
-
-    AActor* TargetActor = ScannedActors[0];
-    if (!IsValid(TargetActor))
-    {
-        ScannedActors.RemoveAt(0);
-        return;
-    }
-
-    if (AItemOrigin* ItemActor = Cast<AItemOrigin>(TargetActor))
-    {
-        if (ItemActor->ItemDataTable && ItemActor->ItemRowName != NAME_None)
-        {
-            static const FString Context(TEXT("Item Lookup"));
-            if (ItemActor->ItemType == EItemTypeSub::Normal)
-            {
-                if (FBaseItem* BaseData = ItemActor->ItemDataTable->FindRow<FBaseItem>(ItemActor->ItemRowName, Context))
-                {
-                    GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
-                        FString::Printf(TEXT("Picked Normal Item: %s"), *BaseData->ItemID.ToString()));
-                }
-            }
-            else if (ItemActor->ItemType == EItemTypeSub::Food)
-            {
-                if (FFoodItem* FoodData = ItemActor->ItemDataTable->FindRow<FFoodItem>(ItemActor->ItemRowName, Context))
-                {
-                    GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
-                        FString::Printf(TEXT("Picked Food: %s Heal: %d"), *FoodData->ItemID.ToString(), FoodData->HealAmount));
-                }
-            }
-        }
-    }
-
-    ScannedActors.RemoveAt(0);
-
-    if (IsValid(TargetActor) && !TargetActor->IsPendingKillPending())
-    {
-        TargetActor->Destroy();
-    }
+    return ScannedActors.Num() > 0 ? ScannedActors[0] : nullptr;
 }
+
+

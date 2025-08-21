@@ -10,8 +10,11 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
+#include "CharacterComponent/Inventory_Component.h"
+#include "CharacterComponent/UI_Component.h"
 #include "Engine/Engine.h"
 #include "Components/InputComponent.h"
+#include "Inventory/Item/ItemOrigin.h"
 
 ACharacterOrigin::ACharacterOrigin()
 {
@@ -31,6 +34,12 @@ ACharacterOrigin::ACharacterOrigin()
 
 	// Scan Component
 	ScanComponent = CreateDefaultSubobject<UScanItem_Component>(TEXT("ScanComponent"));
+
+	// Inventory Component
+	InventoryComponet= CreateDefaultSubobject<UInventory_Component>(TEXT("InventoryComponent"));
+	
+	// UI Component
+	UIComponent= CreateDefaultSubobject<UUI_Component>(TEXT("UIComponent"));
 }
 
 void ACharacterOrigin::BeginPlay()
@@ -100,18 +109,31 @@ void ACharacterOrigin::Character_Jump()
 
 void ACharacterOrigin::InteractScan(const FInputActionValue& InputValue)
 {
-	if (ScanComponent)
+	if (!ScanComponent || !InventoryComponet) return;
+
+	AActor* TargetActor = ScanComponent->GetCurrentTarget();
+	if (!TargetActor) return;
+
+	// Kalau target adalah item
+	if (AItemOrigin* ItemActor = Cast<AItemOrigin>(TargetActor))
 	{
-		ScanComponent->Interact();
+		InventoryComponet->AddItem(ItemActor->ItemRowName, 1);
+
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
+			FString::Printf(TEXT("Picked up: %s"), *ItemActor->ItemRowName.ToString()));
+
+		ItemActor->Destroy();
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan,
+			FString::Printf(TEXT("Interacted with: %s"), *TargetActor->GetName()));
 	}
 }
 
 void ACharacterOrigin::TestInput()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Test Input Pressed"));
-	if (ScanComponent)
-	{
-		ScanComponent->Interact(); // atau aksi lain
-	}
+	//this is decoy
+	
 	GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,FString::Printf(TEXT("Test Work...")));
 }

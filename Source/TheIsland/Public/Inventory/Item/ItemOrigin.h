@@ -43,6 +43,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
 	UDataTable* ItemDataTable;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Item")
+	int32 Quantity = 1;
 	
 	virtual void Tick(float DeltaTime) override;
 };

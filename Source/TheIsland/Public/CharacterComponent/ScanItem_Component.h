@@ -13,7 +13,6 @@ class THEISLAND_API UScanItem_Component : public UActorComponent
 
 public:
 	UScanItem_Component();
-	void Interact();
 
 protected:
 	virtual void BeginPlay() override;
@@ -32,4 +31,8 @@ protected:
 	UFUNCTION()
 	void OnScanEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 						  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+public:
+	/** Ambil target pertama yang ter-scan */
+	AActor* GetCurrentTarget() const;
 };
