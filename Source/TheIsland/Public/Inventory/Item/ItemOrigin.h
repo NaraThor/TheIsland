@@ -2,24 +2,34 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Inventory/DataStruct/ItemDataStruct.h"
+#include "Engine/DataTable.h"
 #include "ItemOrigin.generated.h"
 
 class USphereComponent;
 
+UENUM(BlueprintType)
+enum class EItemTypeSub : uint8
+{
+	Normal,
+	Food
+};
 UCLASS()
 class THEISLAND_API AItemOrigin : public AActor
 {
 	GENERATED_BODY()
 
-public:	
-	AItemOrigin();
-
 protected:
 	virtual void BeginPlay() override;
 
-public:	
-	virtual void Tick(float DeltaTime) override;
+public:
+	AItemOrigin();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item")
+	EItemTypeSub ItemType;
+
+	// Row name di DataTable
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item")
+	FName ItemRowName;
 
 	// Komponen visual
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -31,5 +41,8 @@ public:
 
 	// Data Asset item
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item")
-	UItemDataStruct* ItemData;
+	UDataTable* ItemDataTable;
+
+	
+	virtual void Tick(float DeltaTime) override;
 };
