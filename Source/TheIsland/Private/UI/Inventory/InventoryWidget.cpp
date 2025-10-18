@@ -1,35 +1,29 @@
-// InventoryWidget.cpp
 #include "UI/Inventory/InventoryWidget.h"
-#include "Components/UniformGridPanel.h"
+#include "CharacterComponent/Inventory_Component.h"
+#include "Components/HorizontalBox.h"
 #include "UI/Inventory/InventorySlotWidget.h"
 
-void UInventoryWidget::InitializeGrid(int32 Columns, int32 Rows)
+void UInventoryWidget::RefreshInventory(UInventory_Component* InventoryRef)
 {
-	if (!GridPanel)
+	if (!InventoryRef || !SlotWidgetClass || !HorizontalPanel)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GridPanel is NULL!"));
+		UE_LOG(LogTemp, Warning, TEXT("RefreshInventory failed: Missing reference or class"));
 		return;
 	}
 
-	if (!SlotWidgetClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("SlotWidgetClass is NULL!"));
-		return;
-	}
+	// Hapus isi panel sebelum menggambar ulang
+	HorizontalPanel->ClearChildren();
 
-	GridPanel->ClearChildren();
-	UE_LOG(LogTemp, Warning, TEXT("InitializeGrid called: %d x %d"), Columns, Rows);
-
-	for (int32 Row = 0; Row < Rows; Row++)
+	// Loop semua slot dari komponen inventory
+	for (const FInventorySlot& SlotData : InventoryRef->Slots)
 	{
-		for (int32 Col = 0; Col < Columns; Col++)
+		UInventorySlotWidget* NewSlot = CreateWidget<UInventorySlotWidget>(this, SlotWidgetClass);
+		if (NewSlot)
 		{
-			UInventorySlotWidget* NewSlot = CreateWidget<UInventorySlotWidget>(this, SlotWidgetClass);
-			if (NewSlot)
-			{
-				GridPanel->AddChildToUniformGrid(NewSlot, Row, Col);
-				UE_LOG(LogTemp, Warning, TEXT("Slot added at Row=%d, Col=%d"), Row, Col);
-			}
+			NewSlot->UpdateSlot(SlotData);
+			HorizontalPanel->AddChild(NewSlot);
 		}
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("InventoryWidget refreshed: %d slots."), InventoryRef->Slots.Num());
 }

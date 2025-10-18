@@ -2,10 +2,10 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Inventory/DataStruct/InventorySlot.h"
 #include "InventoryWidget.generated.h"
 
-class UUniformGridPanel;
+class UInventory_Component;
+class UHorizontalBox;
 class UInventorySlotWidget;
 
 UCLASS()
@@ -14,12 +14,14 @@ class THEISLAND_API UInventoryWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(meta=(BindWidget))
-	UUniformGridPanel* GridPanel;
+	UPROPERTY(meta = (BindWidget))
+	UHorizontalBox* HorizontalPanel;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Inventory")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	TSubclassOf<UInventorySlotWidget> SlotWidgetClass;
 
+	// 🔹 Panggil ini untuk menampilkan data inventory sebenarnya
 	UFUNCTION(BlueprintCallable)
-	void InitializeGrid(int32 Columns, int32 Rows);
+	void RefreshInventory(class UInventory_Component* InventoryRef);
+	
 };

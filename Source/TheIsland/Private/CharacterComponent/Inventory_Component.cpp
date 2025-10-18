@@ -3,6 +3,8 @@
 
 #include "CharacterComponent/Inventory_Component.h"
 
+#include "Inventory/DataStruct/BaseItem.h"
+
 UInventory_Component::UInventory_Component()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -31,30 +33,59 @@ bool UInventory_Component::AddItem(FName ItemID, int32 Quantity)
 		return false;
 	}
 
-	// Cek stack dulu
+	// 🔹 1️⃣ Coba cari slot untuk item ini (baik stackable atau kosong)
+	FInventorySlot* TargetSlot = FindAvailableSlot(ItemID);
+	if (!TargetSlot)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Inventory full. Item %s could not be added."), *ItemID.ToString());
+		return false;
+	}
+
+	// 🔹 2️⃣ Tambah quantity
+	if (TargetSlot->ItemID.IsNone())
+	{
+		// Slot kosong → isi baru
+		TargetSlot->ItemID = ItemID;
+		TargetSlot->Quantity = Quantity;
+		UE_LOG(LogTemp, Warning, TEXT("Item %s added to empty slot. Quantity: %d"), *ItemID.ToString(), Quantity);
+	}
+	else
+	{
+		// Slot sudah berisi item sama → stack
+		TargetSlot->Quantity += Quantity;
+		UE_LOG(LogTemp, Warning, TEXT("Item %s stacked. New Quantity: %d"), *ItemID.ToString(), TargetSlot->Quantity);
+	}
+
+	// 🔹 3️⃣ Broadcast update hanya sekali di akhir
+	OnInventoryUpdated.Broadcast();
+	return true;
+}
+
+FInventorySlot* UInventory_Component::FindAvailableSlot(FName ItemID)
+{
+	if (!ItemDataTable) return nullptr;
+
+	const FBaseItem* ItemData = ItemDataTable->FindRow<FBaseItem>(ItemID, TEXT("FindAvailableSlot"));
+	if (!ItemData) return nullptr;
+
+	int32 MaxStack = ItemData->MaxStack;
+
+	// Cari slot dengan item sama yang belum full
 	for (FInventorySlot& Slot : Slots)
 	{
-		if (Slot.ItemID == ItemID)
-		{
-			Slot.Quantity += Quantity;
-			UE_LOG(LogTemp, Warning, TEXT("Item %s stacked. New Quantity: %d"), *ItemID.ToString(), Slot.Quantity);
-			return true;
-		}
+		if (Slot.ItemID == ItemID && Slot.Quantity < MaxStack)
+			return &Slot;
 	}
 
 	// Cari slot kosong
 	for (FInventorySlot& Slot : Slots)
 	{
 		if (Slot.ItemID.IsNone())
-		{
-			Slot.ItemID = ItemID;
-			Slot.Quantity = Quantity;
-			UE_LOG(LogTemp, Warning, TEXT("Item %s added to empty slot. Quantity: %d"), *ItemID.ToString(), Quantity);
-			return true;
-		}
+			return &Slot;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Inventory full. Item %s could not be added."), *ItemID.ToString());
-	return false;
+	return nullptr;
 }
+
+
 
