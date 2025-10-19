@@ -37,7 +37,7 @@ protected:
 	UScanItem_Component* ScanComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
-	UInventory_Component* InventoryComponet;
+	UInventory_Component* InventoryComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UUI_Component* UIComponent;

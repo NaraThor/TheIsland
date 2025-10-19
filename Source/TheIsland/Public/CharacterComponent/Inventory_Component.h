@@ -36,7 +36,5 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Inventory")
 	UDataTable* ItemDataTable;
-
-private:
-	FInventorySlot* FindAvailableSlot(FName ItemID);
+	
 };

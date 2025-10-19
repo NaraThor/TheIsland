@@ -36,7 +36,7 @@ ACharacterOrigin::ACharacterOrigin()
 	ScanComponent = CreateDefaultSubobject<UScanItem_Component>(TEXT("ScanComponent"));
 
 	// Inventory Component
-	InventoryComponet= CreateDefaultSubobject<UInventory_Component>(TEXT("InventoryComponent"));
+	InventoryComponent= CreateDefaultSubobject<UInventory_Component>(TEXT("InventoryComponent"));
 	
 	// UI Component
 	UIComponent= CreateDefaultSubobject<UUI_Component>(TEXT("UIComponent"));
@@ -109,7 +109,7 @@ void ACharacterOrigin::Character_Jump()
 
 void ACharacterOrigin::InteractScan(const FInputActionValue& InputValue)
 {
-	if (!ScanComponent || !InventoryComponet) return;
+	if (!ScanComponent || !InventoryComponent) return;
 
 	AActor* TargetActor = ScanComponent->GetCurrentTarget();
 	if (!TargetActor) return;
@@ -117,7 +117,7 @@ void ACharacterOrigin::InteractScan(const FInputActionValue& InputValue)
 	// Kalau target adalah item
 	if (AItemOrigin* ItemActor = Cast<AItemOrigin>(TargetActor))
 	{
-		InventoryComponet->AddItem(ItemActor->ItemRowName, 1);
+		InventoryComponent->AddItem(ItemActor->ItemRowName, ItemActor->Quantity);
 
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
 			FString::Printf(TEXT("Picked up: %s"), *ItemActor->ItemRowName.ToString()));

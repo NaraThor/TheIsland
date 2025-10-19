@@ -2,10 +2,11 @@
 
 
 #include "CharacterComponent/Inventory_Component.h"
-
 #include "Inventory/DataStruct/BaseItem.h"
 
-UInventory_Component::UInventory_Component()
+UInventory_Component::UInventory_Component():
+	ItemDataTable(nullptr)
+
 {
 	PrimaryComponentTick.bCanEverTick = false;
 }
@@ -15,6 +16,7 @@ void UInventory_Component::BeginPlay()
 	Super::BeginPlay();
 
 	InitializeInventory(8); // 8 slot
+	
 	AddItem("Wood_01", 5);
 	AddItem("Apple_01", 2);
 	AddItem("Wood_01", 3); // harus stack ke slot pertama
@@ -33,59 +35,67 @@ bool UInventory_Component::AddItem(FName ItemID, int32 Quantity)
 		return false;
 	}
 
-	// 🔹 1️⃣ Coba cari slot untuk item ini (baik stackable atau kosong)
-	FInventorySlot* TargetSlot = FindAvailableSlot(ItemID);
-	if (!TargetSlot)
+	if (!ItemDataTable)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Inventory full. Item %s could not be added."), *ItemID.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("AddItem failed: ItemDataTable is null"));
 		return false;
 	}
 
-	// 🔹 2️⃣ Tambah quantity
-	if (TargetSlot->ItemID.IsNone())
+	const FBaseItem* ItemData = ItemDataTable->FindRow<FBaseItem>(ItemID, TEXT("AddItem"));
+	if (!ItemData)
 	{
-		// Slot kosong → isi baru
-		TargetSlot->ItemID = ItemID;
-		TargetSlot->Quantity = Quantity;
-		UE_LOG(LogTemp, Warning, TEXT("Item %s added to empty slot. Quantity: %d"), *ItemID.ToString(), Quantity);
-	}
-	else
-	{
-		// Slot sudah berisi item sama → stack
-		TargetSlot->Quantity += Quantity;
-		UE_LOG(LogTemp, Warning, TEXT("Item %s stacked. New Quantity: %d"), *ItemID.ToString(), TargetSlot->Quantity);
+		UE_LOG(LogTemp, Warning, TEXT("AddItem failed: Item %s not found in DataTable"), *ItemID.ToString());
+		return false;
 	}
 
-	// 🔹 3️⃣ Broadcast update hanya sekali di akhir
-	OnInventoryUpdated.Broadcast();
-	return true;
-}
+	int32 MaxStack = ItemData->MaxStack > 0 ? ItemData->MaxStack : 1;
+	int32 Remaining = Quantity;
 
-FInventorySlot* UInventory_Component::FindAvailableSlot(FName ItemID)
-{
-	if (!ItemDataTable) return nullptr;
-
-	const FBaseItem* ItemData = ItemDataTable->FindRow<FBaseItem>(ItemID, TEXT("FindAvailableSlot"));
-	if (!ItemData) return nullptr;
-
-	int32 MaxStack = ItemData->MaxStack;
-
-	// Cari slot dengan item sama yang belum full
+	// Stack ke slot yang sudah ada
 	for (FInventorySlot& Slot : Slots)
 	{
 		if (Slot.ItemID == ItemID && Slot.Quantity < MaxStack)
-			return &Slot;
+		{
+			int32 Space = MaxStack - Slot.Quantity;
+			int32 AddAmount = FMath::Min(Space, Remaining);
+			Slot.Quantity += AddAmount;
+			Remaining -= AddAmount;
+
+			UE_LOG(LogTemp, Warning, TEXT("Item %s stacked. Added %d. New Quantity: %d"), 
+				*ItemID.ToString(), AddAmount, Slot.Quantity);
+
+			if (Remaining <= 0) break;
+		}
 	}
 
-	// Cari slot kosong
-	for (FInventorySlot& Slot : Slots)
+	// Masukkan ke slot kosong
+	if (Remaining > 0)
 	{
-		if (Slot.ItemID.IsNone())
-			return &Slot;
+		for (FInventorySlot& Slot : Slots)
+		{
+			if (Slot.ItemID.IsNone())
+			{
+				int32 AddAmount = FMath::Min(MaxStack, Remaining);
+				Slot.ItemID = ItemID;
+				Slot.Quantity = AddAmount;
+				Remaining -= AddAmount;
+
+				UE_LOG(LogTemp, Warning, TEXT("Item %s added to empty slot. Quantity: %d"), 
+					*ItemID.ToString(), AddAmount);
+
+				if (Remaining <= 0) break;
+			}
+		}
 	}
 
-	return nullptr;
+	// Inventory penuh
+	if (Remaining > 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Inventory full. %d items of %s could not be added."), Remaining, *ItemID.ToString());
+	}
+
+	// Broadcast update
+	OnInventoryUpdated.Broadcast();
+
+	return (Remaining < Quantity); // true jika ada yang berhasil ditambahkan
 }
-
-
-

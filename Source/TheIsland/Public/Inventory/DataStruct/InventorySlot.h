@@ -8,8 +8,7 @@ USTRUCT(BlueprintType)
 struct FInventorySlot
 {
 	GENERATED_BODY()
-
-public:
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName ItemID;
 
