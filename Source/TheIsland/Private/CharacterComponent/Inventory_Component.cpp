@@ -48,7 +48,7 @@ bool UInventory_Component::AddItem(FName ItemID, int32 Quantity)
 		return false;
 	}
 
-	int32 MaxStack = ItemData->MaxStack > 0 ? ItemData->MaxStack : 1;
+	int32 MaxStack = ItemData->ItemNumeric.MaxStack > 0 ? ItemData->ItemNumeric.MaxStack : 1;
 	int32 Remaining = Quantity;
 
 	// Stack ke slot yang sudah ada

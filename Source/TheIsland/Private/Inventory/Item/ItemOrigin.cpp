@@ -29,7 +29,7 @@ void AItemOrigin::BeginPlay()
 		{
 			if (FBaseItem* BaseData = ItemDataTable->FindRow<FBaseItem>(ItemRowName, TEXT("")))
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Normal Item: %s"), *BaseData->ItemID.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("Normal Item: %s"), *BaseData->ID.ToString());
 			}
 		}
 		else if (ItemType == EItemTypeSub::Food)
@@ -37,7 +37,7 @@ void AItemOrigin::BeginPlay()
 			if (FFoodItem* FoodData = ItemDataTable->FindRow<FFoodItem>(ItemRowName, TEXT("")))
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Food: %s Heal: %d"), 
-					*FoodData->ItemID.ToString(), FoodData->HealAmount);
+					*FoodData->ID.ToString(), FoodData->HealAmount);
 			}
 		}
 	}

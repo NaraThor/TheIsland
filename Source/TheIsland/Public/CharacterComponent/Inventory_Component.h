@@ -31,7 +31,7 @@ public:
 	bool AddItem(FName ItemID, int32 Quantity);
 
 	// Event delegate untuk update UI
-	UPROPERTY(BlueprintAssignable, Category="Inventory")
+	UPROPERTY(BlueprintReadOnly, Category="Inventory")
 	FOnInventoryUpdated OnInventoryUpdated;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Inventory")
