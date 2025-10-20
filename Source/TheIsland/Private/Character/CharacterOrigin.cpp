@@ -117,10 +117,10 @@ void ACharacterOrigin::InteractScan(const FInputActionValue& InputValue)
 	// Kalau target adalah item
 	if (AItemOrigin* ItemActor = Cast<AItemOrigin>(TargetActor))
 	{
-		InventoryComponent->AddItem(ItemActor->ItemRowName, ItemActor->Quantity);
+		InventoryComponent->AddItem(ItemActor->ItemRowHandle.RowName, ItemActor->Quantity);
 
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Yellow,
-			FString::Printf(TEXT("Picked up: %s"), *ItemActor->ItemRowName.ToString()));
+			FString::Printf(TEXT("Picked up: %s"), *ItemActor->ItemRowHandle.RowName.ToString()));
 
 		ItemActor->Destroy();
 	}

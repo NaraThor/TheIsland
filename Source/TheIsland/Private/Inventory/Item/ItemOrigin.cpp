@@ -2,7 +2,6 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/DataStruct/BaseItem.h"
-#include "Inventory/DataStruct/FoodItem.h"
 
 AItemOrigin::AItemOrigin()
 {
@@ -23,27 +22,71 @@ void AItemOrigin::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (ItemDataTable && ItemRowName != NAME_None)
-	{
-		if (ItemType == EItemTypeSub::Normal)
-		{
-			if (FBaseItem* BaseData = ItemDataTable->FindRow<FBaseItem>(ItemRowName, TEXT("")))
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Normal Item: %s"), *BaseData->ID.ToString());
-			}
-		}
-		else if (ItemType == EItemTypeSub::Food)
-		{
-			if (FFoodItem* FoodData = ItemDataTable->FindRow<FFoodItem>(ItemRowName, TEXT("")))
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Food: %s Heal: %d"), 
-					*FoodData->ID.ToString(), FoodData->HealAmount);
-			}
-		}
-	}
+	InitializePickup();
+	
 }
 
 void AItemOrigin::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
+
+void AItemOrigin::InitializePickup()
+{
+	if (!ItemRowHandle.DataTable)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] DataTable belum diassign."));
+		return;
+	}
+
+	if (ItemRowHandle.RowName == NAME_None)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] RowName belum diatur."));
+		return;
+	}
+
+	// Ambil data berdasarkan RowHandle
+	const FBaseItem* BaseItem = ItemRowHandle.GetRow<FBaseItem>(TEXT("InitializePickup"));
+	if (!BaseItem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] Gagal menemukan row %s di DataTable."), *ItemRowHandle.RowName.ToString());
+		return;
+	}
+
+	// Cache data penting
+	CachedItemID = BaseItem->ID;
+	CachedItemName = BaseItem->ItemText.Name;
+	CachedItemType = BaseItem->ItemType;
+
+	// Set mesh dari data item
+	if (BaseItem->ItemAsset.Mesh)
+	{
+		MeshComponent->SetStaticMesh(BaseItem->ItemAsset.Mesh);
+	}
+	else
+	{
+		MeshComponent->SetStaticMesh(nullptr);
+		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] Item %s tidak memiliki mesh."), *CachedItemID.ToString());
+	}
+
+	// Log debug friendly
+	UE_LOG(LogTemp, Log, TEXT("[InitializePickup] Loaded item: %s (%s) | Type: %s | Stackable: %s"),
+		*CachedItemName.ToString(),
+		*CachedItemID.ToString(),
+		*UEnum::GetValueAsString(CachedItemType),
+		BaseItem->ItemNumeric.bIsStackable ? TEXT("Yes") : TEXT("No")
+	);
+}
+
+#if WITH_EDITOR
+void AItemOrigin::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	// Jika properti ItemRowHandle berubah, langsung update data
+	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(AItemOrigin, ItemRowHandle))
+	{
+		InitializePickup();
+	}
+}
+#endif

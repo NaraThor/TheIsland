@@ -92,6 +92,9 @@ struct FItemAssetData
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item|Asset")
 	UStaticMesh* Mesh = nullptr;
+	
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item|Asset")
+	//FVector MeshScale = FVector(1.f, 1.f, 1.f);
 };
 
 // ---------------------- FINAL ITEM STRUCT ----------------------
