@@ -1,7 +1,7 @@
 #include "Inventory/Item/ItemOrigin.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
-#include "Inventory/DataStruct/BaseItem.h"
+#include "Inventory/DataStruct/DataItem.h"
 
 AItemOrigin::AItemOrigin()
 {
@@ -46,7 +46,7 @@ void AItemOrigin::InitializePickup()
 	}
 
 	// Ambil data berdasarkan RowHandle
-	const FBaseItem* BaseItem = ItemRowHandle.GetRow<FBaseItem>(TEXT("InitializePickup"));
+	const FDataItem* BaseItem = ItemRowHandle.GetRow<FDataItem>(TEXT("InitializePickup"));
 	if (!BaseItem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] Gagal menemukan row %s di DataTable."), *ItemRowHandle.RowName.ToString());

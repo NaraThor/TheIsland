@@ -4,64 +4,93 @@
 #include "GameFramework/Character.h"
 #include "UI/Inventory/InventoryWidget.h"
 #include "TimerManager.h"
+#include "UI/HUD/UIHandler/MainMenu.h"
+
 
 AHUD_Origin::AHUD_Origin()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	
 }
 
 void AHUD_Origin::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (!InventoryWidgetClass)
+	
+	if (MainMenuClass)
 	{
-		UE_LOG(LogTemp, Error, TEXT("HUD_Origin: InventoryWidgetClass not set!"));
-		return;
+		MainMenuWidget = CreateWidget<UMainMenu>(GetWorld(), MainMenuClass);
+		MainMenuWidget->AddToViewport(5);
+		MainMenuWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
-	// 🔹 Buat dan tampilkan widget
-	InventoryWidget = CreateWidget<UInventoryWidget>(GetWorld(), InventoryWidgetClass);
-	if (!InventoryWidget)
-	{
-		UE_LOG(LogTemp, Error, TEXT("HUD_Origin: Failed to create InventoryWidget."));
-		return;
-	}
-	InventoryWidget->AddToViewport();
 
-	// 🔹 Ambil karakter & inventory
-	ACharacter* PlayerChar = Cast<ACharacter>(GetOwningPawn());
-	if (!PlayerChar)
-	{
-		PlayerChar = GetWorld()->GetFirstPlayerController()->GetCharacter();
-	}
-
-	CachedInventory = PlayerChar ? PlayerChar->FindComponentByClass<UInventory_Component>() : nullptr;
-	if (!CachedInventory)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("HUD_Origin: No Inventory_Component found."));
-		return;
-	}
-
-	// 🔹 Hubungkan delegate
-	CachedInventory->OnInventoryUpdated.AddDynamic(this, &AHUD_Origin::OnInventoryUpdatedHandler);
-
-	// 🔹 Lakukan refresh awal
-	GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
-	{
-		if (InventoryWidget && CachedInventory)
-		{
-			InventoryWidget->RefreshInventory(CachedInventory);
-			UE_LOG(LogTemp, Log, TEXT("HUD: Initial inventory refresh done (%d slots)."), CachedInventory->Slots.Num());
-		}
-	});
+	// if UI lainya..
 }
 
-void AHUD_Origin::OnInventoryUpdatedHandler()
+
+void AHUD_Origin::DisplayMenu()
 {
-	if (InventoryWidget && CachedInventory)
+	if (MainMenuWidget)
 	{
-		InventoryWidget->RefreshInventory(CachedInventory);
-		UE_LOG(LogTemp, Log, TEXT("HUD: Inventory auto-refreshed via delegate!"));
+		bIsMenuVisible = true;
+		MainMenuWidget -> SetVisibility(ESlateVisibility::Visible);
+		
 	}
 }
+
+void AHUD_Origin::HideMenu()
+{
+	if (MainMenuWidget)
+	{
+		bIsMenuVisible = false;
+		MainMenuWidget -> SetVisibility(ESlateVisibility::Collapsed);
+		
+	}
+}
+
+void AHUD_Origin::ToggleMenu()
+{
+	if (bIsMenuVisible)
+	{
+		HideMenu();
+
+		const FInputModeGameOnly InputMode;
+		GetOwningPlayerController() -> SetInputMode(InputMode);
+		GetOwningPlayerController() -> SetShowMouseCursor(false);
+		
+	}
+	else
+	{
+		DisplayMenu();
+
+		const FInputModeGameAndUI InputMode;
+		GetOwningPlayerController() -> SetInputMode(InputMode);
+		GetOwningPlayerController() -> SetShowMouseCursor(true);
+		
+	}
+}
+
+/*
+void AHUD_Origin::ShowCrosshair()
+{
+}
+
+void AHUD_Origin::HideCrosshair()
+{
+}
+
+
+void AHUD_Origin::ShowInteractionWidget() const
+{
+}
+
+void AHUD_Origin::HideInteractionWidget() const
+{
+}
+
+void AHUD_Origin::UpdateInteractionWidget(
+	const FInteractableData* InteractableData)
+const
+{
+}
+*/

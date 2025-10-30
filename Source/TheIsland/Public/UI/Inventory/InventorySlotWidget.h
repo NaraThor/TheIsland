@@ -2,9 +2,10 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Inventory/DataStruct/InventorySlot.h"
 #include "InventorySlotWidget.generated.h"
 
+class UBaseItem;
+class UBorder;
 class UImage;
 class UTextBlock;
 
@@ -14,12 +15,38 @@ class THEISLAND_API UInventorySlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(meta=(BindWidget))
+	FORCEINLINE void SetItemReference (UBaseItem* ItemIn) {ItemReference= ItemIn;};
+
+	FORCEINLINE UBaseItem* GetItemReference () const {return ItemReference;}
+
+
+protected:
+	/*
+	UPROPERTY(EditDefaultsOnly,Category="Inventory Slot")
+	TSubclassOf<UDragItemVisual> DragItemVisualClass;
+
+	UPROPERTY(EditDefaultsOnly,Category="Inventory Slot")
+	TSubclassOf<UInventoryTooltip> ToolTipClass;
+	*/
+	
+	UPROPERTY(VisibleAnywhere,Category="Inventory Slot")
+	UBaseItem* ItemReference;
+	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
+	UBorder* ItemBorder;
+
+	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
 	UImage* ItemIcon;
 
-	UPROPERTY(meta=(BindWidget))
-	UTextBlock* QuantityText;
+	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
+	UTextBlock* ItemQuantity;
+	
 
-	UFUNCTION(BlueprintCallable)
-	void UpdateSlot(const FInventorySlot& SlotData);
+	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
+
+	//drag drop
+
+	///Disini..
+
+	
 };

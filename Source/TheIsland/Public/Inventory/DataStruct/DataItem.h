@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "BaseItem.generated.h"
+#include "DataItem.generated.h"
 
 // ---------------------- ENUM ----------------------
 
@@ -100,7 +100,7 @@ struct FItemAssetData
 // ---------------------- FINAL ITEM STRUCT ----------------------
 
 USTRUCT(BlueprintType)
-struct FBaseItem : public FTableRowBase
+struct FDataItem : public FTableRowBase
 {
 	GENERATED_BODY()
 	

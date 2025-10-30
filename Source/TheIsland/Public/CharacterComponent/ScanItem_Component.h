@@ -5,6 +5,7 @@
 
 class USphereComponent;
 class AItemOrigin;
+class IInteractionInterface;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class THEISLAND_API UScanItem_Component : public UActorComponent
@@ -32,7 +33,18 @@ protected:
 	void OnScanEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 						  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+
+	UPROPERTY(VisibleAnywhere, Category = "Character | Interaction")
+	TScriptInterface<IInteractionInterface> TargetInteractable;
+
+	void ClearScan();
+	void HighlightInteractable(AActor* NewTarget);
+	void ProccessInteractable(TArray<AActor*> ScannedActor);
+
+
 public:
 	/** Ambil target pertama yang ter-scan */
 	AActor* GetCurrentTarget() const;
+
+
 };

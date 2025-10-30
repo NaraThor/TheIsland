@@ -1,29 +1,60 @@
 #include "UI/Inventory/InventoryWidget.h"
+
+#include "Character/CharacterOrigin.h"
 #include "CharacterComponent/Inventory_Component.h"
 #include "Components/HorizontalBox.h"
+#include "Components/WrapBox.h"
+#include "Inventory/Item/BaseItem.h"
 #include "UI/Inventory/InventorySlotWidget.h"
 
-void UInventoryWidget::RefreshInventory(UInventory_Component* InventoryRef)
+void UInventoryWidget::NativeOnInitialized()
 {
-	if (!InventoryRef || !SlotWidgetClass || !HorizontalPanel)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RefreshInventory failed: Missing reference or class"));
-		return;
-	}
+	Super::NativeOnInitialized();
 
-	// Hapus isi panel sebelum menggambar ulang
-	HorizontalPanel->ClearChildren();
+	PlayerCharacter = Cast<ACharacterOrigin>(GetOwningPlayerPawn());
 
-	// Loop semua slot dari komponen inventory
-	for (const FInventorySlot& SlotData : InventoryRef->Slots)
+	if (PlayerCharacter)
 	{
-		UInventorySlotWidget* NewSlot = CreateWidget<UInventorySlotWidget>(this, SlotWidgetClass);
-		if (NewSlot)
+		InventoryReference = PlayerCharacter->GetInventory();
+		if (InventoryReference)
 		{
-			NewSlot->UpdateSlot(SlotData);
-			HorizontalPanel->AddChild(NewSlot);
+			
+			InventoryReference->OnInventoryUpdated.AddUObject(this,&UInventoryWidget::RefreshInventory);
+
+			UE_LOG(LogTemp, Warning, TEXT("InventoryWidget Constructed: %s | Parent: %s | InViewport: %d | Outer: %s | OwningPawn: %s"),
+		*GetNameSafe(this),
+		*GetNameSafe(GetParent()),
+		IsInViewport() ? 1 : 0,
+		*GetNameSafe(GetOuter()),
+		*GetNameSafe(GetOwningPlayerPawn()));
+			UE_LOG(LogTemp,Warning,TEXT("UI Refresh From Inventory Work!!! %s"), *GetName());
 		}
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("InventoryWidget refreshed: %d slots."), InventoryRef->Slots.Num());
 }
+
+void UInventoryWidget::RefreshInventory()
+{
+
+	if (InventoryReference&& InventorySlotClass)
+	{
+		InventoryPanel -> ClearChildren();
+
+		for (UBaseItem* const& InventoryItem:InventoryReference->GetInventoryContents())
+		{
+			UInventorySlotWidget* ItemSlot = CreateWidget<UInventorySlotWidget>(this,InventorySlotClass);
+			ItemSlot->SetItemReference(InventoryItem);
+
+			InventoryPanel->AddChild(ItemSlot);
+		}
+		//Nambah command
+	}
+	
+}
+
+/*
+bool UInventoryWidget::NativeOnDrop(
+	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
+{
+	return nullptr;
+}
+*/

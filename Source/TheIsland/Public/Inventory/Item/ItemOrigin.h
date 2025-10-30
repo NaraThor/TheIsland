@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
-#include "Inventory/DataStruct/BaseItem.h"
+#include "Inventory/DataStruct/DataItem.h"
 #include "ItemOrigin.generated.h"
 
 class USphereComponent;

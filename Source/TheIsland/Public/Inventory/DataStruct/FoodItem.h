@@ -1,12 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BaseItem.h"
+#include "DataItem.h"
 #include "Engine/DataTable.h"
 #include "FoodItem.generated.h"
 
 USTRUCT(BlueprintType)
-struct FFoodItem : public FBaseItem
+struct FFoodItem : public FDataItem
 {
 	GENERATED_BODY()
 
