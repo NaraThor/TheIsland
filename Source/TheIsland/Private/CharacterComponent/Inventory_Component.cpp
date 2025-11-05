@@ -111,11 +111,29 @@ UBaseItem* UInventory_Component::FindNextPartialStack(UBaseItem* ItemIn) const
 void UInventory_Component::SplitExistingStack(
 	UBaseItem* ItemIn, const int32 AmountToSplit)
 {
+
+	if (!ItemIn || AmountToSplit <= 0) return;
+
+	if (HasEmptySlot())
+	{
+		// Kurangi jumlah dari item asli
+		RemoveAmountOfItem(ItemIn, AmountToSplit);
+
+		// Buat item copy baru untuk stack baru
+		UBaseItem* NewStack = ItemIn->CreateItemCopy();
+		if (!NewStack) return;
+
+		NewStack->SetQuantity(AmountToSplit);
+		AddNewItem(NewStack, AmountToSplit); // Broadcast sudah ada di AddNewItem
+	}
+	
+	/*
 	if (HasEmptySlot())
 	{
 		RemoveAmountOfItem(ItemIn, AmountToSplit);
 		AddNewItem(ItemIn, AmountToSplit);
 	}
+	*/
 }
 
 FItemAddResult UInventory_Component::HandleNonStackableItems(UBaseItem* InputItem)
@@ -183,6 +201,7 @@ int32 UInventory_Component::HandleStackableItems(UBaseItem* ItemIn, int32 Reques
 		{
 			ExistingItemStack->SetQuantity(ExistingItemStack->Quantity + AmountToMakeFullStack);
 			AmountToDistribute -= AmountToMakeFullStack;
+			OnInventoryUpdated.Broadcast();
 		}
 
 		if (AmountToDistribute <= 0)

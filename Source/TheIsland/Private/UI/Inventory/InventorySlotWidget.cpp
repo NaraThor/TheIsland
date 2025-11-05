@@ -4,7 +4,9 @@
 #include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Handler/ItemDragDropOperation.h"
 #include "Inventory/Item/BaseItem.h"
+#include "UI/Inventory/DragItemVisual.h"
 
 //DragDrop
 void UInventorySlotWidget::NativeOnInitialized()
@@ -37,11 +39,13 @@ void UInventorySlotWidget::NativeConstruct()
 			ItemBorder->SetBrushColor(FLinearColor(1.0f,0.45f,0.0f)); //Orange 
 			break;
 
-		default: ;
+		default:
+			break;
 		}
 		
 		ItemIcon -> SetBrushFromTexture(ItemReference->ItemAsset.Icon);
 
+		// Tampilkan jumlah hanya kalau stackable
 		if (ItemReference-> ItemNumeric.bIsStackable)
 		{
 			ItemQuantity->SetText(FText::AsNumber(ItemReference->Quantity));
@@ -51,19 +55,75 @@ void UInventorySlotWidget::NativeConstruct()
 			ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
+	else
+	{
+		// Slot kosong: hapus icon dan sembunyikan text quantity
+		ItemIcon->SetBrushFromTexture(nullptr);
+		ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
+
+		// (opsional) ubah warna border jadi abu-abu atau transparan
+		ItemBorder->SetBrushColor(FLinearColor(0.1f, 0.1f, 0.1f, 0.2f));
+		
+	}
 }
 
+FReply UInventorySlotWidget::NativeOnMouseButtonDown(
+	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)
+{
+	FReply Reply = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 
-
-/*
-if (QuantityText)
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && ItemReference)
 	{
-		if (SlotData.Quantity > 0)
-			QuantityText->SetText(FText::AsNumber(SlotData.Quantity));
-		else
-			QuantityText->SetText(FText::GetEmpty());
+		return Reply.Handled().DetectDrag(TakeWidget(),EKeys::LeftMouseButton);
 	}
+	//submenu on right click will happpen here
+	return Reply.Unhandled();
+}
 
-	// TODO: Set ItemIcon pakai DataTable/DataAsset
- */
+void UInventorySlotWidget::NativeOnMouseLeave(
+	const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+}
+
+void UInventorySlotWidget::NativeOnDragDetected(
+	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)
+{
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent,OutOperation);
+
+	// Cegah drag slot kosong
+	if (!ItemReference)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Tried to drag empty slot — ignored."));
+		return;
+	}
+	
+	if (DragItemVisualClass)
+	{
+		const TObjectPtr<UDragItemVisual> DragVisual=CreateWidget<UDragItemVisual>(this,DragItemVisualClass);
+		DragVisual -> ItemIcon->SetBrushFromTexture(ItemReference->ItemAsset.Icon);
+		DragVisual -> ItemBorder->SetBrushColor(ItemBorder->GetBrushColor());
+
+		ItemReference->ItemNumeric.bIsStackable
+			? DragVisual->ItemQuantity->SetText(FText::AsNumber(ItemReference->Quantity))
+			: DragVisual->ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
+
+		UItemDragDropOperation* DragItemOperation =	NewObject<UItemDragDropOperation>();
+		DragItemOperation->SourceItem = ItemReference;
+		DragItemOperation->SourceInventory = ItemReference->OwningInventory;
+
+		DragItemOperation->DefaultDragVisual = DragVisual;
+
+		//Pivot Drag Location
+		DragItemOperation-> Pivot = EDragPivot::CenterCenter;
+
+		OutOperation = DragItemOperation;
+	}
+}
+
+bool UInventorySlotWidget::NativeOnDrop(
+	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
+{
+	return Super::NativeOnDrop(InGeometry, InDragDropEvent,InOperation);
+}
 

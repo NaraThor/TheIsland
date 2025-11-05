@@ -4,6 +4,7 @@
 #include "CharacterComponent/Inventory_Component.h"
 #include "Components/HorizontalBox.h"
 #include "Components/WrapBox.h"
+#include "Handler/ItemDragDropOperation.h"
 #include "Inventory/Item/BaseItem.h"
 #include "UI/Inventory/InventorySlotWidget.h"
 
@@ -32,6 +33,7 @@ void UInventoryWidget::NativeOnInitialized()
 	}
 }
 
+
 void UInventoryWidget::RefreshInventory()
 {
 
@@ -51,10 +53,16 @@ void UInventoryWidget::RefreshInventory()
 	
 }
 
-/*
+
 bool UInventoryWidget::NativeOnDrop(
 	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
-	return nullptr;
+	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
+
+	if (ItemDragDrop->SourceItem&& InventoryReference)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("Detect on Item Drop on Inventory Panel"));
+		return true;
+	}
+	return false;
 }
-*/

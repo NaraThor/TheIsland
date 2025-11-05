@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 #include "InventorySlotWidget.generated.h"
 
+class UDragItemVisual;
 class UBaseItem;
 class UBorder;
 class UImage;
@@ -21,10 +22,11 @@ public:
 
 
 protected:
-	/*
+	
 	UPROPERTY(EditDefaultsOnly,Category="Inventory Slot")
 	TSubclassOf<UDragItemVisual> DragItemVisualClass;
 
+	/*
 	UPROPERTY(EditDefaultsOnly,Category="Inventory Slot")
 	TSubclassOf<UInventoryTooltip> ToolTipClass;
 	*/
@@ -39,14 +41,17 @@ protected:
 
 	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
 	UTextBlock* ItemQuantity;
-	
+
 
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 
 	//drag drop
 
-	///Disini..
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent)override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
 
 	
 };
