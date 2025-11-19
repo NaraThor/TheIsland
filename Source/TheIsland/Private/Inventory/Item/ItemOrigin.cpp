@@ -1,92 +1,234 @@
 #include "Inventory/Item/ItemOrigin.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/SphereComponent.h"
+#include "Character/CharacterOrigin.h"
+#include "Engine/DataTable.h"
 #include "Inventory/DataStruct/DataItem.h"
+#include "CharacterComponent/Inventory_Component.h"
 
 AItemOrigin::AItemOrigin()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Mesh
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
+	SetRootComponent(MeshComponent);
 
-	// Collision
-	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
-	CollisionComponent->SetupAttachment(MeshComponent);
-	CollisionComponent->SetSphereRadius(100.f);
-	CollisionComponent->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	MeshComponent->SetGenerateOverlapEvents(true);
+	MeshComponent->SetSimulatePhysics(true);
 }
 
-void AItemOrigin::BeginPlay()
-{
-	Super::BeginPlay();
-
-	InitializePickup();
-	
-}
-
-void AItemOrigin::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
+/* ============================================================
+   INITIALIZATION
+   ============================================================ */
 
 void AItemOrigin::InitializePickup()
 {
 	if (!ItemRowHandle.DataTable)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] DataTable belum diassign."));
+		UE_LOG(LogTemp, Error, TEXT("ItemOrigin: Missing DataTable!"));
 		return;
 	}
 
-	if (ItemRowHandle.RowName == NAME_None)
+	// Row valid?
+	const FDataItem* Row = nullptr;
+
+	if (!ItemRowHandle.RowName.IsNone())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] RowName belum diatur."));
+		Row = ItemRowHandle.GetRow<FDataItem>("InitializePickup");
+	}
+
+	if (!Row)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ItemOrigin: Invalid RowHandle for pickup actor"));
 		return;
 	}
 
-	// Ambil data berdasarkan RowHandle
-	const FDataItem* BaseItem = ItemRowHandle.GetRow<FDataItem>(TEXT("InitializePickup"));
-	if (!BaseItem)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] Gagal menemukan row %s di DataTable."), *ItemRowHandle.RowName.ToString());
-		return;
-	}
+	// Set ItemID based on data
+	ItemID = Row->ID;
 
-	// Cache data penting
-	CachedItemID = BaseItem->ID;
-	CachedItemName = BaseItem->ItemText.Name;
-	CachedItemType = BaseItem->ItemType;
-
-	// Set mesh dari data item
-	if (BaseItem->ItemAsset.Mesh)
+	// ---- QUANTITY LOGIC ----
+	// Jika Quantity belum diset (0), artinya menggunakan default row
+	if (Quantity <= 0)
 	{
-		MeshComponent->SetStaticMesh(BaseItem->ItemAsset.Mesh);
+		// Bisa pilih salah satu:
+
+		// 1) Spawn default = 1 (ala game survival)
+		Quantity = 1;
+
+		// 2) ATAU spawn default full stack (aktifkan jika mau)
+		// Quantity = Row->ItemNumeric.MaxStack;
 	}
 	else
 	{
-		MeshComponent->SetStaticMesh(nullptr);
-		UE_LOG(LogTemp, Warning, TEXT("[InitializePickup] Item %s tidak memiliki mesh."), *CachedItemID.ToString());
+		// Jika designer isi manual (1–MaxStack), kita clamp supaya aman
+		Quantity = FMath::Clamp(Quantity, 1, Row->ItemNumeric.MaxStack);
 	}
 
-	// Log debug friendly
-	UE_LOG(LogTemp, Log, TEXT("[InitializePickup] Loaded item: %s (%s) | Type: %s | Stackable: %s"),
-		*CachedItemName.ToString(),
-		*CachedItemID.ToString(),
-		*UEnum::GetValueAsString(CachedItemType),
-		BaseItem->ItemNumeric.bIsStackable ? TEXT("Yes") : TEXT("No")
-	);
+	// Update mesh dan info visual
+	UpdateVisualFromData(Row);
+
+	UE_LOG(LogTemp, Log,
+		TEXT("Initialized Pickup: %s | Quantity = %d | MaxStack = %d"),
+		*ItemID.ToString(), Quantity, Row->ItemNumeric.MaxStack);
 }
+
+void AItemOrigin::InitializeDrop(FName InItemID, int32 InQuantity)
+{
+	ItemID   = InItemID;
+	Quantity = InQuantity;
+
+	if (!ItemRowHandle.DataTable)
+		return;
+
+	const FDataItem* Row = ItemRowHandle.DataTable->FindRow<FDataItem>(ItemID, TEXT("InitializeDrop"));
+	if (!Row)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Drop: Item ID '%s' not found in table"), *ItemID.ToString());
+		return;
+	}
+
+	UpdateVisualFromData(Row);
+}
+
+/* ============================================================
+   VISUAL UPDATE
+   ============================================================ */
+
+void AItemOrigin::UpdateVisualFromData(const FDataItem* ItemData)
+{
+	if (!ItemData)
+		return;
+
+	if (ItemData->ItemAsset.Mesh)
+		MeshComponent->SetStaticMesh(ItemData->ItemAsset.Mesh);
+}
+
+/* ============================================================
+   INTERACTION
+   ============================================================ */
+
+void AItemOrigin::BeginFocus()
+{
+	
+}
+
+void AItemOrigin::EndFocus()
+{
+	
+}
+
+void AItemOrigin::Interact(ACharacterOrigin* PlayerCharacter)
+{
+	if (!PlayerCharacter)
+		return;
+
+	TakePickup(PlayerCharacter);
+}
+
+void AItemOrigin::TakePickup(ACharacterOrigin* Taker)
+{
+	if (IsPendingKillPending())
+		return;
+
+	if (ItemID.IsNone() || Quantity <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Pickup failed: invalid ItemID/Quantity"));
+		return;
+	}
+
+	UInventory_Component* PlayerInventory = Taker->GetInventory();
+	if (!PlayerInventory)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Player has no Inventory_Component"));
+		return;
+	}
+
+	FInventorySlot SlotToAdd;
+	SlotToAdd.ItemID = ItemID;
+	SlotToAdd.Quantity = Quantity;
+
+	const FItemAddResult AddResult = PlayerInventory->HandleAddItem(SlotToAdd);
+
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *AddResult.ResultMessage.ToString());
+
+	switch (AddResult.OperationResult)
+	{
+	case EItemAddResult::IAR_NoItemAdded:
+		UE_LOG(LogTemp, Warning, TEXT("No items added"));
+		break;
+
+	case EItemAddResult::IAR_PartialAmountItemAdded:
+		Quantity = AddResult.RemainingAmount; // sisanya tetap di pickup
+		UE_LOG(LogTemp, Warning, TEXT("Partial add, remaining: %d"), Quantity);
+		break;
+
+	case EItemAddResult::IAR_AllItemAdded:
+		Destroy(); // semua berhasil masuk inventory
+		break;
+	}
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+
+void AItemOrigin::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Initial untuk spawn natural
+	InitializePickup();
+}
+
+/* ============================================================
+   EDITOR
+   ============================================================ */
 
 #if WITH_EDITOR
 void AItemOrigin::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	// Jika properti ItemRowHandle berubah, langsung update data
-	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(AItemOrigin, ItemRowHandle))
+	if (!ItemRowHandle.DataTable)
+		return;
+
+	const FName ChangedProp = PropertyChangedEvent.Property
+		? PropertyChangedEvent.Property->GetFName()
+		: NAME_None;
+
+	// Ambil row sekali saja
+	const FDataItem* Row = nullptr;
+	if (!ItemRowHandle.RowName.IsNone())
 	{
-		InitializePickup();
+		Row = ItemRowHandle.GetRow<FDataItem>("EditorUpdate");
+	}
+
+	// === RowHandle berubah ===
+	if (ChangedProp == GET_MEMBER_NAME_CHECKED(AItemOrigin, ItemRowHandle))
+	{
+		if (Row)
+		{
+			ItemID = Row->ID;
+			Quantity = FMath::Clamp(Quantity, 1, Row->ItemNumeric.MaxStack);
+
+			UpdateVisualFromData(Row);
+		}
+		else
+		{
+			// Jika row hilang → reset item
+			ItemID = NAME_None;
+			Quantity = 1;
+		}
+	}
+
+	// === Quantity berubah ===
+	if (ChangedProp == GET_MEMBER_NAME_CHECKED(AItemOrigin, Quantity))
+	{
+		if (Row)
+		{
+			// Jika kamu ingin bisa 0, ganti 1 → 0 di sini
+			Quantity = FMath::Clamp(Quantity, 1, Row->ItemNumeric.MaxStack);
+		}
 	}
 }
 #endif

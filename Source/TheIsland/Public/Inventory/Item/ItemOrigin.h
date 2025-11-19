@@ -2,67 +2,57 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Engine/DataTable.h"
-#include "Inventory/DataStruct/DataItem.h"
+#include "Handler/InteractionInterface.h"
 #include "ItemOrigin.generated.h"
 
-class USphereComponent;
-
-/*
-UENUM(BlueprintType)
-enum class EItemTypeSub : uint8
-{
-	Normal,
-	Food
-};
-*/
+class UStaticMeshComponent;
+struct FDataItem;
+class UDataTable;
+class ACharacterOrigin;
 
 UCLASS()
-class THEISLAND_API AItemOrigin : public AActor
+class THEISLAND_API AItemOrigin : public AActor, public IInteractionInterface
 {
 	GENERATED_BODY()
+
+public:
+	AItemOrigin();
+
+	/** Dipanggil saat item spawn natural (pickup di world) */
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	void InitializePickup();
+
+	/** Dipanggil saat item di-drop dari inventory */
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	void InitializeDrop(FName InItemID, int32 InQuantity);
+
+	FORCEINLINE FName GetItemID() const { return ItemID; }
+	FORCEINLINE int32 GetQuantity() const { return Quantity; }
 
 protected:
 	virtual void BeginPlay() override;
 
-public:
-	AItemOrigin();
-	
-	// Komponen visual
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	UStaticMeshComponent* MeshComponent;
+	// Interaction Interface
+	virtual void BeginFocus() override;
+	virtual void EndFocus() override;
+	virtual void Interact(ACharacterOrigin* PlayerCharacter) override;
 
-	// Komponen collision (untuk overlap pickup)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	USphereComponent* CollisionComponent;
+private:
 
-	// ------------------- ITEM DATA -------------------
+	UPROPERTY(VisibleAnywhere, Category = "Item|Component")
+	TObjectPtr<UStaticMeshComponent> MeshComponent;
 
-	// Dropdown otomatis untuk pilih item dari DataTable
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pickup | Item Initialization")
+	UPROPERTY(EditAnywhere, Category = "Item|Data")
 	FDataTableRowHandle ItemRowHandle;
 
-	// Jumlah item (default 1)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
+	UPROPERTY(VisibleInstanceOnly, Category = "Item|Runtime")
+	FName ItemID;
+
+	UPROPERTY(EditAnywhere, Category = "Item|Runtime")
 	int32 Quantity = 1;
 
-	// Cache data dari DataTable agar bisa dibaca di runtime
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Cached Data")
-	FName CachedItemID;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Cached Data")
-	FText CachedItemName;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item | Cached Data")
-	EItemTypeData CachedItemType;
-	virtual void Tick(float DeltaTime) override;
-
-	// ------------------- FUNCTION -------------------
-	UFUNCTION(CallInEditor, BlueprintCallable, Category="Pickup | Item Initialization")
-	void InitializePickup();
-	
-	//Question
-	//void InitializePickup();
+	void UpdateVisualFromData(const FDataItem* ItemData);
+	void TakePickup(ACharacterOrigin* Taker);
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

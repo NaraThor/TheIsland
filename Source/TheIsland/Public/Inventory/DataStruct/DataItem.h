@@ -78,8 +78,12 @@ struct FItemNumericData
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item|Numeric")
 	int32 MaxStack = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item|Numeric")
-	bool bIsStackable;
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item|Numeric")
+	//bool bIsStackable;
+	bool IsStackable() const
+	{
+		return MaxStack > 1;
+	}
 };
 
 USTRUCT(BlueprintType)

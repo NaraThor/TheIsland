@@ -1,14 +1,14 @@
-// InventorySlotWidget.h
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "CharacterComponent/Inventory_Component.h"// untuk FInventorySlot & FInventoryItemRow
 #include "InventorySlotWidget.generated.h"
 
-class UDragItemVisual;
-class UBaseItem;
 class UBorder;
 class UImage;
 class UTextBlock;
+class UDragItemVisual;
 
 UCLASS()
 class THEISLAND_API UInventorySlotWidget : public UUserWidget
@@ -16,42 +16,33 @@ class THEISLAND_API UInventorySlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	FORCEINLINE void SetItemReference (UBaseItem* ItemIn) {ItemReference= ItemIn;};
 
-	FORCEINLINE UBaseItem* GetItemReference () const {return ItemReference;}
-
+	// Set data slot + row
+	void SetItemData(const FInventorySlot& Slot, const FDataItem* Row);
 
 protected:
-	
-	UPROPERTY(EditDefaultsOnly,Category="Inventory Slot")
-	TSubclassOf<UDragItemVisual> DragItemVisualClass;
 
-	/*
-	UPROPERTY(EditDefaultsOnly,Category="Inventory Slot")
-	TSubclassOf<UInventoryTooltip> ToolTipClass;
-	*/
-	
-	UPROPERTY(VisibleAnywhere,Category="Inventory Slot")
-	UBaseItem* ItemReference;
-	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
+	// --- UI Widgets ---
+	UPROPERTY(meta=(BindWidget))
 	UBorder* ItemBorder;
 
-	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
+	UPROPERTY(meta=(BindWidget))
 	UImage* ItemIcon;
 
-	UPROPERTY(VisibleAnywhere,Category="Inventory Slot",meta=(BindWidget))
+	UPROPERTY(meta=(BindWidget))
 	UTextBlock* ItemQuantity;
 
+	UPROPERTY(EditDefaultsOnly, Category="Inventory Slot")
+	TSubclassOf<UDragItemVisual> DragItemVisualClass;
 
-	virtual void NativeOnInitialized() override;
+	// --- Slot Data ---
+	FInventorySlot SlotData;
+	const FDataItem* ItemRow;
+
+	// --- Overrides ---
 	virtual void NativeConstruct() override;
-
-	//drag drop
-
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)override;
-	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent)override;
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
-
-	
 };

@@ -37,7 +37,7 @@ void UBaseItem::SetQuantity(const int32 NewQuantity)
 	{
 		//FMath::Clamp(A[Nilai rill], MIN, MAX);
 		Quantity = FMath::Clamp(NewQuantity, 0,
-		this -> ItemNumeric.bIsStackable? this->ItemNumeric.MaxStack : 1);
+		this -> ItemNumeric.IsStackable()? this->ItemNumeric.MaxStack : 1);
 
 		if (this -> OwningInventory)
 		{

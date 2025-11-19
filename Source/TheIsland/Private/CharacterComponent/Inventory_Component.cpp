@@ -1,333 +1,157 @@
-// Inventory_Component.cpp
-
-
 #include "CharacterComponent/Inventory_Component.h"
 #include "Inventory/DataStruct/DataItem.h"
-#include "Inventory/Item/BaseItem.h"
 
+// ----------------------------------------------------------
+// CONSTRUCTOR
+// ----------------------------------------------------------
 UInventory_Component::UInventory_Component()
 {
-
-	PrimaryComponentTick.bCanEverTick = true;
-	
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
+// ----------------------------------------------------------
+// BEGIN PLAY
+// ----------------------------------------------------------
 void UInventory_Component::BeginPlay()
 {
-	Super::BeginPlay();
-
-	InventorySlotCapacity = 8;
-	InventoryWeightCapacity = 50.f;
-
-	//Inisiasi Slot Kosong
-	InventoryContents.Init(nullptr, InventorySlotCapacity);
-	
-	OnInventoryUpdated.Broadcast();
+    Super::BeginPlay();
+    InventorySlots.SetNum(InventorySize);
 }
 
-UBaseItem* UInventory_Component::FindMatchingItem(
-	UBaseItem* ItemIn) const
+// ----------------------------------------------------------
+// GET ITEM ROW
+// ----------------------------------------------------------
+const FDataItem* UInventory_Component::GetItemRow(const FName& ItemID) const
 {
+    if (!ItemDataTable || ItemID.IsNone())
+        return nullptr;
 
-	if (!ItemIn) return nullptr;
-
-	for (const TObjectPtr<UBaseItem>& InventoryItem : InventoryContents)
-	{
-		if (InventoryItem && InventoryItem->ID == ItemIn->ID)
-			return InventoryItem;
-	}
-	return nullptr;
-	
+    return ItemDataTable->FindRow<FDataItem>(ItemID, TEXT("Lookup"));
 }
 
-FItemAddResult UInventory_Component::HandleAddItem(UBaseItem* InputItem)
+// ----------------------------------------------------------
+// FIND STACK
+// ----------------------------------------------------------
+int32 UInventory_Component::FindExistingStack(const FName& ItemID) const
 {
+    for (int32 i = 0; i < InventorySlots.Num(); i++)
+    {
+        const FInventorySlot& Slot = InventorySlots[i];
 
-	if (!GetOwner() || !InputItem)
-		return FItemAddResult::AddedNone(FText::FromString("Invalid item or no owner."));
+        if (Slot.ItemID == ItemID)
+        {
+            const FDataItem* Row = GetItemRow(ItemID);
+            if (Row && Slot.Quantity < Row->ItemNumeric.MaxStack)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("FindExistingStack: checking slot %d | %s x%d (Max: %d)"), i, *Slot.ItemID.ToString(), Slot.Quantity, Row->ItemNumeric.MaxStack);
+                return i; // hanya return slot yang belum full
+                
+            }
+        }
+    }
 
-	const int32 InitialRequestedAddAmount = InputItem->Quantity;
-
-	// 🔹 Non-stackable
-	if (!InputItem->ItemNumeric.bIsStackable)
-		return HandleNonStackableItems(InputItem);
-
-	// 🔹 Stackable
-	const int32 StackableAmountAdded = HandleStackableItems(InputItem, InitialRequestedAddAmount);
-
-	if (StackableAmountAdded == InitialRequestedAddAmount)
-	{
-		return FItemAddResult::AddedAll(InitialRequestedAddAmount,
-			FText::Format(FText::FromString("Successfully added {0} {1} to inventory."),
-				InitialRequestedAddAmount,
-				InputItem->ItemText.Name));
-	}
-
-	if (StackableAmountAdded < InitialRequestedAddAmount && StackableAmountAdded > 0)
-	{
-		return FItemAddResult::AddedPartial(InitialRequestedAddAmount,
-			FText::Format(FText::FromString("Partial amount of {0} added. Number added = {1}"),
-				InputItem->ItemText.Name,
-				StackableAmountAdded));
-	}
-
-	return FItemAddResult::AddedNone(
-		FText::Format(FText::FromString("Couldn't add {0}. Inventory full or invalid item."),
-			InputItem->ItemText.Name));
+    return INDEX_NONE;
 }
 
-UBaseItem* UInventory_Component::FindNextItemByID(
-	UBaseItem* ItemIn) const
+// ----------------------------------------------------------
+// FIND EMPTY SLOT
+// ----------------------------------------------------------
+int32 UInventory_Component::FindEmptySlot() const
 {
-
-	if (ItemIn)
-	{
-		if (const TArray<TObjectPtr<UBaseItem>>::ElementType* Result = InventoryContents.FindByKey(ItemIn))
-		{
-			return *Result;
-		}
-	}
-	return nullptr;
-	
+    for (int32 i = 0; i < InventorySlots.Num(); i++)
+    {
+        if (InventorySlots[i].IsEmpty())
+            return i;
+    }
+    return INDEX_NONE;
 }
 
-UBaseItem* UInventory_Component::FindNextPartialStack(UBaseItem* ItemIn) const
+// ----------------------------------------------------------
+// ADD ITEM
+// ----------------------------------------------------------
+FItemAddResult UInventory_Component::HandleAddItem(const FInventorySlot& SlotToAdd)
 {
+     if (SlotToAdd.ItemID.IsNone() || SlotToAdd.Quantity <= 0)
+        return FItemAddResult::AddedNone(FText::FromString("Invalid item"), SlotToAdd.Quantity);
 
-	if (!ItemIn) return nullptr;
+    const FDataItem* Data = GetItemRow(SlotToAdd.ItemID);
+    if (!Data)
+        return FItemAddResult::AddedNone(FText::FromString("Item not found in DataTable"), SlotToAdd.Quantity);
 
-	const TObjectPtr<UBaseItem>* Result = InventoryContents.FindByPredicate(
-		[&ItemIn](const UBaseItem* InventoryItem)
-		{
-			if (!InventoryItem) return false;
-			return InventoryItem->ID == ItemIn->ID && !InventoryItem->IsItemFullStack();
-		});
+    int32 Remaining = SlotToAdd.Quantity;
 
-	return Result ? *Result : nullptr;
+    // ADD TO EXISTING STACK
+    if (Data->ItemNumeric.IsStackable())
+    {
+        int32 StackIndex = FindExistingStack(SlotToAdd.ItemID);
+        if (StackIndex != INDEX_NONE)
+        {
+            FInventorySlot& Slot = InventorySlots[StackIndex];
+            int32 SpaceLeft = Data->ItemNumeric.MaxStack - Slot.Quantity;
+
+            int32 ToAdd = FMath::Min(SpaceLeft, Remaining);
+            Slot.Quantity += ToAdd;
+            Remaining -= ToAdd;
+
+            if (Remaining <= 0)
+            {
+                OnInventoryUpdated.Broadcast();
+                return FItemAddResult::AddedAll(SlotToAdd.Quantity, FText::FromString("All items added to stack"));
+            }
+        }
+    }
+
+    // ADD TO EMPTY SLOT
+    while (Remaining > 0)
+    {
+        int32 EmptyIndex = FindEmptySlot();
+        if (EmptyIndex == INDEX_NONE)
+        {
+            int32 Added = SlotToAdd.Quantity - Remaining;
+            OnInventoryUpdated.Broadcast();
+            return FItemAddResult::AddedPartial(Added, Remaining, FText::FromString("Inventory Full"));
+        }
+
+        int32 ToAdd = Data->ItemNumeric.IsStackable() ? FMath::Min(Data->ItemNumeric.MaxStack, Remaining) : 1;
+
+        InventorySlots[EmptyIndex].ItemID = SlotToAdd.ItemID;
+        InventorySlots[EmptyIndex].Quantity = ToAdd;
+
+        Remaining -= ToAdd;
+
+        if (!Data->ItemNumeric.IsStackable())
+            break;
+    }
+
+    OnInventoryUpdated.Broadcast();
+    int32 AddedAmount = SlotToAdd.Quantity - Remaining;
+    if (Remaining > 0)
+        return FItemAddResult::AddedPartial(AddedAmount, Remaining, FText::FromString("Some items added, inventory full"));
+    return FItemAddResult::AddedAll(AddedAmount, FText::FromString("Item added successfully"));
 }
 
-
-
-void UInventory_Component::SplitExistingStack(
-	UBaseItem* ItemIn, const int32 AmountToSplit)
+// ----------------------------------------------------------
+// DROP ITEM
+// ----------------------------------------------------------
+bool UInventory_Component::DropItem(const FName& ItemID, int32 Quantity)
 {
+    if (Quantity <= 0) return false;
 
-	if (!ItemIn || AmountToSplit <= 0) return;
+    int32 SlotIndex = FindExistingStack(ItemID);
+    if (SlotIndex == INDEX_NONE) return false;
 
-	if (HasEmptySlot())
-	{
-		// Kurangi jumlah dari item asli
-		RemoveAmountOfItem(ItemIn, AmountToSplit);
+    FInventorySlot& Slot = InventorySlots[SlotIndex];
 
-		// Buat item copy baru untuk stack baru
-		UBaseItem* NewStack = ItemIn->CreateItemCopy();
-		if (!NewStack) return;
+    if (Slot.Quantity < Quantity) return false;
 
-		NewStack->SetQuantity(AmountToSplit);
-		AddNewItem(NewStack, AmountToSplit); // Broadcast sudah ada di AddNewItem
-	}
-	
-	/*
-	if (HasEmptySlot())
-	{
-		RemoveAmountOfItem(ItemIn, AmountToSplit);
-		AddNewItem(ItemIn, AmountToSplit);
-	}
-	*/
+    Slot.Quantity -= Quantity;
+
+    if (Slot.Quantity <= 0)
+    {
+        Slot.ItemID = NAME_None;
+        Slot.Quantity = 0;
+    }
+
+    OnInventoryUpdated.Broadcast();
+    return true;
 }
-
-FItemAddResult UInventory_Component::HandleNonStackableItems(UBaseItem* InputItem)
-{
-	if (!InputItem)
-		return FItemAddResult::AddedNone(FText::FromString("Invalid item reference."));
-
-	if (InputItem->GetItemSingleWeight() < 0)
-		return FItemAddResult::AddedNone(FText::FromString("Invalid item weight."));
-
-	// 🔹 Check kapasitas berat
-	if (InventoryTotalWeight + InputItem->GetItemSingleWeight() > InventoryWeightCapacity)
-	{
-		return FItemAddResult::AddedNone(
-			FText::Format(FText::FromString("Cannot add {0}. Exceeds weight capacity."),
-				InputItem->ItemText.Name));
-	}
-
-	// 🔹 Check slot kosong
-	if (!HasEmptySlot())
-	{
-		return FItemAddResult::AddedNone(
-			FText::Format(FText::FromString("Cannot add {0}. No empty slot available."),
-				InputItem->ItemText.Name));
-	}
-
-	// Tambahkan item
-	AddNewItem(InputItem, 1);
-	InventoryTotalWeight += InputItem->GetItemSingleWeight();
-
-	return FItemAddResult::AddedAll(1,
-		FText::Format(FText::FromString("Added single {0} successfully."),
-			InputItem->ItemText.Name));
-}
-
-int32 UInventory_Component::HandleStackableItems(UBaseItem* ItemIn, int32 RequestedAddAmount)
-{
-	if (!ItemIn || RequestedAddAmount <= 0)
-		return 0;
-
-	UE_LOG(LogTemp, Warning, TEXT("HandleStackable: Item = %s | Quantity = %d | Stackable = %d | MaxStack = %d"),
-		*ItemIn->ItemText.Name.ToString(),
-		ItemIn->Quantity,
-		ItemIn->ItemNumeric.bIsStackable,
-		ItemIn->ItemNumeric.MaxStack);
-
-	int32 AmountToDistribute = RequestedAddAmount;
-
-	UBaseItem* ExistingItemStack = FindNextPartialStack(ItemIn);
-	if (!ExistingItemStack)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No existing stack found for %s"), *ItemIn->ItemText.Name.ToString());
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Found partial stack for %s"), *ItemIn->ItemText.Name.ToString());
-	}
-
-	while (ExistingItemStack)
-	{
-		const int32 AmountToMakeFullStack = CalculateNumberForFullStack(ExistingItemStack, AmountToDistribute);
-		UE_LOG(LogTemp, Warning, TEXT("Stack found: Add %d to make full stack"), AmountToMakeFullStack);
-
-		if (AmountToMakeFullStack > 0)
-		{
-			ExistingItemStack->SetQuantity(ExistingItemStack->Quantity + AmountToMakeFullStack);
-			AmountToDistribute -= AmountToMakeFullStack;
-			OnInventoryUpdated.Broadcast();
-		}
-
-		if (AmountToDistribute <= 0)
-			return RequestedAddAmount;
-
-		ExistingItemStack = FindNextPartialStack(ItemIn);
-	}
-
-	while (AmountToDistribute > 0 && GetEmptySlotCount() > 0)
-	{
-		const int32 AddAmount = FMath::Min(AmountToDistribute, ItemIn->ItemNumeric.MaxStack);
-		UE_LOG(LogTemp, Warning, TEXT("Creating new stack of %d items"), AddAmount);
-
-		UBaseItem* NewStack = ItemIn->CreateItemCopy();
-		if (!NewStack)
-		{
-			UE_LOG(LogTemp, Error, TEXT("CreateItemCopy failed for %s!"), *ItemIn->ItemText.Name.ToString());
-			return 0;
-		}
-
-		NewStack->SetQuantity(AddAmount);
-		AddNewItem(NewStack, AddAmount);
-		AmountToDistribute -= AddAmount;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("End HandleStackableItems. Distributed = %d / %d"), 
-		RequestedAddAmount - AmountToDistribute, RequestedAddAmount);
-
-	return RequestedAddAmount - AmountToDistribute;
-}
-
-int32 UInventory_Component::CalculateWeightAddAmount(UBaseItem* ItemIn,int32 RequestedAddAmount)
-{
-	const int32 WeightMaxAddAmount = FMath::FloorToInt((InventoryWeightCapacity - InventoryTotalWeight) / ItemIn->GetItemSingleWeight());
-	return FMath::Min(WeightMaxAddAmount, RequestedAddAmount);
-}
-
-int32 UInventory_Component::CalculateNumberForFullStack(
-	UBaseItem* StackableItem,int32 InitialRequestedAddAmount)
-{
-	const int32 AddAmountToMakeFullStack = StackableItem->ItemNumeric.MaxStack - StackableItem->Quantity;
-	return FMath::Min(InitialRequestedAddAmount, AddAmountToMakeFullStack);
-}
-
-void UInventory_Component::AddNewItem(UBaseItem* Item, const int32 AmountToAdd)
-{
-	if (!Item) return;
-
-	UBaseItem* NewItem = (Item->bIsCopy || Item->bIsPickup) ? Item : Item->CreateItemCopy();
-	NewItem->ResetItemFlag();
-	NewItem->OwningInventory = this;
-	NewItem->SetQuantity(AmountToAdd);
-
-	bool bAdded = false;
-	for (int32 i = 0; i < InventoryContents.Num(); i++)
-	{
-		if (InventoryContents[i] == nullptr)
-		{
-			InventoryContents[i] = NewItem;
-			bAdded = true;
-			break;
-		}
-	}
-
-	if (!bAdded)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Inventory full, cannot add new item!"));
-		return;
-	}
-
-	InventoryTotalWeight += NewItem->GetItemSingleWeight();
-
-	// 🔹 Debug info
-	UE_LOG(LogTemp, Warning, TEXT("Added %s | Empty slots left: %d"),
-		*NewItem->ItemText.Name.ToString(),
-		GetEmptySlotCount());
-
-	OnInventoryUpdated.Broadcast();
-}
-
-int32 UInventory_Component::
-GetEmptySlotCount() const
-{
-	int32 EmptyCount = 0;
-	for (UBaseItem* Slot : InventoryContents)
-	{
-		if (Slot == nullptr)
-			EmptyCount++;
-	}
-	return EmptyCount;
-}
-
-bool UInventory_Component::HasEmptySlot() const
-{
-	for (UBaseItem* Slot : InventoryContents)
-	{
-		if (Slot == nullptr)
-			return true;
-	}
-	return false;
-}
-
-void UInventory_Component::RemoveSingleInstanceOfItem(
-	UBaseItem* ItemToRemove)
-{
-	for (int32 i = 0; i < InventoryContents.Num(); i++)
-	{
-		if (InventoryContents[i] == ItemToRemove)
-		{
-			InventoryContents[i] = nullptr;
-			break;
-		}
-	}
-	OnInventoryUpdated.Broadcast();
-}
-
-int32 UInventory_Component::RemoveAmountOfItem(
-	UBaseItem* ItemIn,int32 DesiredAmountToRemove)
-{
-	const int32 ActualAmountToRemove = FMath::Min(DesiredAmountToRemove, ItemIn->Quantity);
-
-	ItemIn->SetQuantity(ItemIn->Quantity - ActualAmountToRemove);
-
-	InventoryTotalWeight -= ActualAmountToRemove*ItemIn -> GetItemSingleWeight();
-	OnInventoryUpdated.Broadcast();
-
-	return ActualAmountToRemove;
-}
-

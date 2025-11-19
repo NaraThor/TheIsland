@@ -13,42 +13,43 @@ void UInventoryWidget::NativeOnInitialized()
 	Super::NativeOnInitialized();
 
 	PlayerCharacter = Cast<ACharacterOrigin>(GetOwningPlayerPawn());
+	if (!PlayerCharacter) return;
 
-	if (PlayerCharacter)
-	{
-		InventoryReference = PlayerCharacter->GetInventory();
-		if (InventoryReference)
-		{
-			
-			InventoryReference->OnInventoryUpdated.AddUObject(this,&UInventoryWidget::RefreshInventory);
+	InventoryReference = PlayerCharacter->GetInventory();
+	if (!InventoryReference) return;
 
-			UE_LOG(LogTemp, Warning, TEXT("InventoryWidget Constructed: %s | Parent: %s | InViewport: %d | Outer: %s | OwningPawn: %s"),
+	InventoryReference->OnInventoryUpdated.AddDynamic(this, &UInventoryWidget::RefreshInventory);
+
+	// Debug log
+	UE_LOG(LogTemp, Warning, TEXT("InventoryWidget Constructed: %s | Parent: %s | InViewport: %d | Outer: %s | OwningPawn: %s"),
 		*GetNameSafe(this),
 		*GetNameSafe(GetParent()),
 		IsInViewport() ? 1 : 0,
 		*GetNameSafe(GetOuter()),
 		*GetNameSafe(GetOwningPlayerPawn()));
-			UE_LOG(LogTemp,Warning,TEXT("UI Refresh From Inventory Work!!! %s"), *GetName());
-		}
-	}
+
+	UE_LOG(LogTemp, Warning, TEXT("UI Refresh From Inventory Work!!! %s"), *GetName());
 }
 
 
 void UInventoryWidget::RefreshInventory()
 {
 
-	if (InventoryReference&& InventorySlotClass)
+	if (!InventoryReference || !InventorySlotClass) return;
+
+	InventoryPanel->ClearChildren();
+
+	for (const FInventorySlot& InventorySlot : InventoryReference->GetInventoryContents())
 	{
-		InventoryPanel -> ClearChildren();
+		if (InventorySlot.IsEmpty()) continue;
 
-		for (UBaseItem* const& InventoryItem:InventoryReference->GetInventoryContents())
-		{
-			UInventorySlotWidget* ItemSlot = CreateWidget<UInventorySlotWidget>(this,InventorySlotClass);
-			ItemSlot->SetItemReference(InventoryItem);
+		const FDataItem* ItemRow = InventoryReference->GetItemRow(InventorySlot.ItemID);
+		if (!ItemRow) continue;
 
-			InventoryPanel->AddChild(ItemSlot);
-		}
-		//Nambah command
+		UInventorySlotWidget* ItemSlotWidget = CreateWidget<UInventorySlotWidget>(this, InventorySlotClass);
+		ItemSlotWidget->SetItemData(InventorySlot, ItemRow);
+
+		InventoryPanel->AddChild(ItemSlotWidget);
 	}
 	
 }
@@ -58,11 +59,24 @@ bool UInventoryWidget::NativeOnDrop(
 	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
 	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
+	if (!ItemDragDrop || InventoryReference == nullptr)
+		return false;
 
-	if (ItemDragDrop->SourceItem&& InventoryReference)
+	FVector2D DropPosition = InGeometry.AbsoluteToLocal(InDragDropEvent.GetScreenSpacePosition());
+	FGeometry PanelGeometry = InventoryPanel->GetCachedGeometry();
+
+	bool bIsInsideInventoryPanel = PanelGeometry.IsUnderLocation(InDragDropEvent.GetScreenSpacePosition());
+
+	if (bIsInsideInventoryPanel)
 	{
-		UE_LOG(LogTemp,Warning,TEXT("Detect on Item Drop on Inventory Panel"));
-		return true;
+		UE_LOG(LogTemp, Warning, TEXT("Drop dilakukan di dalam inventory panel"));
+		// TODO: swap logic jika di dalam panel
 	}
-	return false;
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Drop dilakukan di luar inventory -> jatuhkan ke dunia"));
+		InventoryReference->DropItem(ItemDragDrop->ItemID, ItemDragDrop->DragQuantity);
+	}
+
+	return true;
 }

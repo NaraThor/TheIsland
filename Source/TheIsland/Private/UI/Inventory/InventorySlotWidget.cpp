@@ -9,121 +9,91 @@
 #include "UI/Inventory/DragItemVisual.h"
 
 //DragDrop
-void UInventorySlotWidget::NativeOnInitialized()
+void UInventorySlotWidget::SetItemData(const FInventorySlot& InSlot, const FDataItem* Row)
 {
-	Super::NativeOnInitialized();
-	
+	SlotData = InSlot; // assign ke member
+	ItemRow = Row;
+
+	// Refresh visual
+	NativeConstruct();
 }
 
 void UInventorySlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (ItemReference)
+	if (!ItemRow || SlotData.IsEmpty())
 	{
-		switch (ItemReference -> ItemRarity)
-		{
-		case EItemRarityData::Common:
-			ItemBorder->SetBrushColor(FLinearColor(FLinearColor::Gray));
-			break;
-		case EItemRarityData::Rare:
-			ItemBorder->SetBrushColor(FLinearColor(FLinearColor::White));
-			break;
-		case EItemRarityData::Epic:
-			ItemBorder->SetBrushColor(FLinearColor(0.0f,0.71f,0.169f));
-			break;
-		case EItemRarityData::Mythic:
-			ItemBorder->SetBrushColor(FLinearColor(0.0f,0.4f,0.75f));
-			break;
-		case EItemRarityData::Legendary:
-			ItemBorder->SetBrushColor(FLinearColor(1.0f,0.45f,0.0f)); //Orange 
-			break;
+		// Kosongkan slot
+		ItemIcon->SetBrushFromTexture(nullptr);
+		ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
+		ItemBorder->SetBrushColor(FLinearColor(0.1f,0.1f,0.1f,0.2f));
+		return;
+	}
+	// --- Atur warna border berdasarkan rarity ---
+	switch (ItemRow->ItemNumeric.IsStackable() ? EItemRarityData::Common : EItemRarityData::Rare) // contoh simple
+	{
+	case EItemRarityData::Common:    ItemBorder->SetBrushColor(FLinearColor::Gray); break;
+	case EItemRarityData::Rare:      ItemBorder->SetBrushColor(FLinearColor::White); break;
+	case EItemRarityData::Epic:      ItemBorder->SetBrushColor(FLinearColor(0.0f,0.71f,0.169f)); break;
+	case EItemRarityData::Mythic:    ItemBorder->SetBrushColor(FLinearColor(0.0f,0.4f,0.75f)); break;
+	case EItemRarityData::Legendary: ItemBorder->SetBrushColor(FLinearColor(1.0f,0.45f,0.0f)); break;
+	default: ItemBorder->SetBrushColor(FLinearColor::White); break;
+	}
 
-		default:
-			break;
-		}
-		
-		ItemIcon -> SetBrushFromTexture(ItemReference->ItemAsset.Icon);
+	// --- Set icon ---
+	ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
 
-		// Tampilkan jumlah hanya kalau stackable
-		if (ItemReference-> ItemNumeric.bIsStackable)
-		{
-			ItemQuantity->SetText(FText::AsNumber(ItemReference->Quantity));
-		}
-		else
-		{
-			ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
-		}
+	// --- Tampilkan jumlah kalau stackable ---
+	if (ItemRow->ItemNumeric.IsStackable())
+	{
+		ItemQuantity->SetText(FText::AsNumber(SlotData.Quantity));
+		ItemQuantity->SetVisibility(ESlateVisibility::Visible);
 	}
 	else
 	{
-		// Slot kosong: hapus icon dan sembunyikan text quantity
-		ItemIcon->SetBrushFromTexture(nullptr);
 		ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
-
-		// (opsional) ubah warna border jadi abu-abu atau transparan
-		ItemBorder->SetBrushColor(FLinearColor(0.1f, 0.1f, 0.1f, 0.2f));
-		
 	}
 }
 
-FReply UInventorySlotWidget::NativeOnMouseButtonDown(
-	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)
+FReply UInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)
 {
 	FReply Reply = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
-
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && ItemReference)
-	{
-		return Reply.Handled().DetectDrag(TakeWidget(),EKeys::LeftMouseButton);
-	}
-	//submenu on right click will happpen here
-	return Reply.Unhandled();
+	return Reply.Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
 }
 
-void UInventorySlotWidget::NativeOnMouseLeave(
-	const FPointerEvent& InMouseEvent)
+void UInventorySlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseLeave(InMouseEvent);
 }
 
-void UInventorySlotWidget::NativeOnDragDetected(
-	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)
+void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)
 {
-	Super::NativeOnDragDetected(InGeometry, InMouseEvent,OutOperation);
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
-	// Cegah drag slot kosong
-	if (!ItemReference)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Tried to drag empty slot — ignored."));
-		return;
-	}
-	
-	if (DragItemVisualClass)
-	{
-		const TObjectPtr<UDragItemVisual> DragVisual=CreateWidget<UDragItemVisual>(this,DragItemVisualClass);
-		DragVisual -> ItemIcon->SetBrushFromTexture(ItemReference->ItemAsset.Icon);
-		DragVisual -> ItemBorder->SetBrushColor(ItemBorder->GetBrushColor());
+	if (SlotData.IsEmpty() || !ItemRow) return;
 
-		ItemReference->ItemNumeric.bIsStackable
-			? DragVisual->ItemQuantity->SetText(FText::AsNumber(ItemReference->Quantity))
-			: DragVisual->ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
+	if (!DragItemVisualClass) return;
 
-		UItemDragDropOperation* DragItemOperation =	NewObject<UItemDragDropOperation>();
-		DragItemOperation->SourceItem = ItemReference;
-		DragItemOperation->SourceInventory = ItemReference->OwningInventory;
+	UDragItemVisual* DragVisual = CreateWidget<UDragItemVisual>(this, DragItemVisualClass);
+	DragVisual->ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
+	DragVisual->ItemBorder->SetBrushColor(ItemBorder->GetBrushColor());
 
-		DragItemOperation->DefaultDragVisual = DragVisual;
+	if (ItemRow->ItemNumeric.IsStackable())
+		DragVisual->ItemQuantity->SetText(FText::AsNumber(SlotData.Quantity));
+	else
+		DragVisual->ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
 
-		//Pivot Drag Location
-		DragItemOperation-> Pivot = EDragPivot::CenterCenter;
+	UItemDragDropOperation* DragOp = NewObject<UItemDragDropOperation>();
+	DragOp->SourceInventory = nullptr; // nanti bisa set dari InventoryWidget saat buat slot
+	DragOp->SlotData = SlotData;
+	DragOp->DefaultDragVisual = DragVisual;
+	DragOp->Pivot = EDragPivot::CenterCenter;
 
-		OutOperation = DragItemOperation;
-	}
+	OutOperation = DragOp;
 }
 
-bool UInventorySlotWidget::NativeOnDrop(
-	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
+bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
-	return Super::NativeOnDrop(InGeometry, InDragDropEvent,InOperation);
+	return Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 }
-
