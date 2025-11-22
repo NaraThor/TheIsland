@@ -7,6 +7,8 @@
 UInventory_Component::UInventory_Component()
 {
     PrimaryComponentTick.bCanEverTick = false;
+
+    
 }
 
 // ----------------------------------------------------------
@@ -16,6 +18,9 @@ void UInventory_Component::BeginPlay()
 {
     Super::BeginPlay();
     InventorySlots.SetNum(InventorySize);
+
+    // Refresh UI langsung di awal
+    OnInventoryUpdated.Broadcast();
 }
 
 // ----------------------------------------------------------
@@ -126,7 +131,8 @@ FItemAddResult UInventory_Component::HandleAddItem(const FInventorySlot& SlotToA
     OnInventoryUpdated.Broadcast();
     int32 AddedAmount = SlotToAdd.Quantity - Remaining;
     if (Remaining > 0)
-        return FItemAddResult::AddedPartial(AddedAmount, Remaining, FText::FromString("Some items added, inventory full"));
+
+    return FItemAddResult::AddedPartial(AddedAmount, Remaining, FText::FromString("Some items added, inventory full"));
     return FItemAddResult::AddedAll(AddedAmount, FText::FromString("Item added successfully"));
 }
 

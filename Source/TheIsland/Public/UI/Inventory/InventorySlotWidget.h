@@ -9,6 +9,7 @@ class UBorder;
 class UImage;
 class UTextBlock;
 class UDragItemVisual;
+struct FDataItem;
 
 UCLASS()
 class THEISLAND_API UInventorySlotWidget : public UUserWidget
@@ -16,12 +17,24 @@ class THEISLAND_API UInventorySlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	// index slot ini
+	UPROPERTY(BlueprintReadOnly, Category="Inventory")
+	int32 SlotIndex = -1;
+	
+	// Data terdalam slot
+	UPROPERTY(BlueprintReadOnly, Category="Inventory")
+	FInventorySlot SlotData;
 
 	// Set data slot + row
-	void SetItemData(const FInventorySlot& Slot, const FDataItem* Row);
+	void SetItemData(const FInventorySlot& InSlot, const FDataItem* Row);
+
+	// Set index
+	UFUNCTION()
+	void SetSlotIndex(int32 InIndex) { SlotIndex = InIndex; }
+	
+	void RefreshVisual();
 
 protected:
-
 	// --- UI Widgets ---
 	UPROPERTY(meta=(BindWidget))
 	UBorder* ItemBorder;
@@ -36,7 +49,6 @@ protected:
 	TSubclassOf<UDragItemVisual> DragItemVisualClass;
 
 	// --- Slot Data ---
-	FInventorySlot SlotData;
 	const FDataItem* ItemRow;
 
 	// --- Overrides ---

@@ -16,7 +16,7 @@ class THEISLAND_API UItemDragDropOperation : public UDragDropOperation
 	
 public :
 	// ID item yang sedang di-drag
-		UPROPERTY(BlueprintReadWrite, Category="Inventory")
+	UPROPERTY(BlueprintReadWrite, Category="Inventory")
 	FName ItemID = NAME_None;
 
 	// Jumlah item yang sedang di-drag
@@ -26,6 +26,10 @@ public :
 	// Slot yang sedang di-drag
 	UPROPERTY()
 	FInventorySlot SlotData;
+
+	// SLOT INDEX (baru) — index slot sumber di inventory (0..N)
+	UPROPERTY(BlueprintReadWrite, Category = "Inventory")
+	int32 SlotIndex = -1;
 
 	// Referensi ke inventory source (opsional, untuk drop kembali ke inventory asal)
 	UPROPERTY(BlueprintReadWrite, Category="Inventory")

@@ -2,11 +2,11 @@
 
 #include "Character/CharacterOrigin.h"
 #include "CharacterComponent/Inventory_Component.h"
-#include "Components/HorizontalBox.h"
 #include "Components/WrapBox.h"
 #include "Handler/ItemDragDropOperation.h"
 #include "Inventory/Item/BaseItem.h"
 #include "UI/Inventory/InventorySlotWidget.h"
+
 
 void UInventoryWidget::NativeOnInitialized()
 {
@@ -39,44 +39,57 @@ void UInventoryWidget::RefreshInventory()
 
 	InventoryPanel->ClearChildren();
 
-	for (const FInventorySlot& InventorySlot : InventoryReference->GetInventoryContents())
-	{
-		if (InventorySlot.IsEmpty()) continue;
+	// Ambil semua slot (termasuk yang kosong)
+	const TArray<FInventorySlot>& Slots = InventoryReference->GetInventoryContents();
 
-		const FDataItem* ItemRow = InventoryReference->GetItemRow(InventorySlot.ItemID);
-		if (!ItemRow) continue;
+	for (int32 i = 0; i < Slots.Num(); i++)
+	{
+		const FInventorySlot& InventorySlot = Slots[i];
+
+		const FDataItem* ItemRow = nullptr;
+		if (!InventorySlot.IsEmpty())
+		{
+			ItemRow = InventoryReference->GetItemRow(InventorySlot.ItemID);
+		}
 
 		UInventorySlotWidget* ItemSlotWidget = CreateWidget<UInventorySlotWidget>(this, InventorySlotClass);
+		if (!ItemSlotWidget) continue;
+
+		// SET SLOT INDEX DI SINI
+		ItemSlotWidget->SetSlotIndex(i);
+
+		// Serahkan data ke widget (Row bisa nullptr → otomatis dianggap slot kosong)
 		ItemSlotWidget->SetItemData(InventorySlot, ItemRow);
 
+		// Tambahkan ke panel UI
 		InventoryPanel->AddChild(ItemSlotWidget);
 	}
-	
 }
-
 
 bool UInventoryWidget::NativeOnDrop(
 	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
 	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
-	if (!ItemDragDrop || InventoryReference == nullptr)
+	if (!ItemDragDrop || !InventoryPanel)
 		return false;
 
-	FVector2D DropPosition = InGeometry.AbsoluteToLocal(InDragDropEvent.GetScreenSpacePosition());
-	FGeometry PanelGeometry = InventoryPanel->GetCachedGeometry();
+	FVector2D DropPosScreen = InDragDropEvent.GetScreenSpacePosition();
+	bool bInside = InventoryPanel->GetCachedGeometry().IsUnderLocation(DropPosScreen);
 
-	bool bIsInsideInventoryPanel = PanelGeometry.IsUnderLocation(InDragDropEvent.GetScreenSpacePosition());
-
-	if (bIsInsideInventoryPanel)
+	if (bInside)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Drop dilakukan di dalam inventory panel"));
-		// TODO: swap logic jika di dalam panel
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Drop dilakukan di luar inventory -> jatuhkan ke dunia"));
-		InventoryReference->DropItem(ItemDragDrop->ItemID, ItemDragDrop->DragQuantity);
+		UE_LOG(LogTemp, Warning, TEXT("Drop INSIDE Inventory Panel"));
+		//TODO: lakukan swap/move/merge berdasarkan ItemDragDrop->SlotIndex dan target slot
+
+		// Contoh pseudocode:
+		// int32 SourceIndex = ItemDragDrop->SlotIndex;
+		// int32 TargetIndex = DetermineTargetSlotIndexFromPosition(DropPosScreen);
+		// InventoryReference->MoveOrSwap(SourceIndex, TargetIndex);
+
+		return true; // Inventory menangani drop
 	}
 
-	return true;
+	// Drop di luar → biarkan bubble ke MainMenu
+	return false;
 }
+

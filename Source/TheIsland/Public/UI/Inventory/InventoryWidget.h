@@ -7,7 +7,6 @@
 class ACharacterOrigin;
 class UWrapBox;
 class UInventory_Component;
-//class UHorizontalBox;
 class UInventorySlotWidget;
 
 UCLASS()
@@ -33,33 +32,9 @@ public:
 	TSubclassOf<UInventorySlotWidget> InventorySlotClass;
 
 protected:
+	//virtual void NativeConstruct() override;
 	virtual void NativeOnInitialized() override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-
-
-
-
-
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	/*
-	UPROPERTY(meta = (BindWidget))
-	UHorizontalBox* HorizontalPanel;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
-	TSubclassOf<UInventorySlotWidget> SlotWidgetClass;
-
-	// 🔹 Panggil ini untuk menampilkan data inventory sebenarnya
-	UFUNCTION(BlueprintCallable)
-	void RefreshInventory(class UInventory_Component* InventoryRef);
-	*/
+	//virtual bool NativeOnDragOver(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
 	
 };
