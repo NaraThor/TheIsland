@@ -93,3 +93,22 @@ bool UInventoryWidget::NativeOnDrop(
 	return false;
 }
 
+void UInventoryWidget::HandleSlotDrop(
+	UInventorySlotWidget* DropTargetSlot,
+	UItemDragDropOperation* DragOp)
+{
+	if (!DropTargetSlot || !DragOp) return;
+	if (!InventoryReference) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("[INV_WIDGET] Swap %d → %d"),
+		DragOp->SlotIndex,
+		DropTargetSlot->SlotIndex
+	);
+
+	InventoryReference->MoveSlotToSlot(
+		DragOp->SlotIndex,
+		DropTargetSlot->SlotIndex
+	);
+
+	RefreshInventory();
+}

@@ -161,3 +161,55 @@ bool UInventory_Component::DropItem(const FName& ItemID, int32 Quantity)
     OnInventoryUpdated.Broadcast();
     return true;
 }
+
+void UInventory_Component::MoveSlotToSlot(int32 Source, int32 Dest)
+{
+    if (!InventorySlots.IsValidIndex(Source) ||
+        !InventorySlots.IsValidIndex(Dest))
+        return;
+
+    FInventorySlot& S = InventorySlots[Source];
+    FInventorySlot& D = InventorySlots[Dest];
+
+    if (S.IsEmpty()) return;
+    if (Source == Dest) return;
+
+    // 1. Slot kosong → pindah
+    if (D.IsEmpty())
+    {
+        D = S;
+        S = FInventorySlot();
+        OnInventoryUpdated.Broadcast();
+        return;
+    }
+
+    // 2. Sama jenis → merge
+    if (S.ItemID == D.ItemID)
+    {
+        const FDataItem* Row = GetItemRow(S.ItemID);
+        if (Row && Row->ItemNumeric.IsStackable())
+        {
+            int32 Max = Row->ItemNumeric.MaxStack;
+            int32 Total = S.Quantity + D.Quantity;
+
+            D.Quantity = FMath::Min(Max, Total);
+            int32 Left = Total - D.Quantity;
+
+            if (Left <= 0)
+            {
+                S = FInventorySlot(); // kosongkan
+            }
+            else
+            {
+                S.Quantity = Left;
+            }
+
+            OnInventoryUpdated.Broadcast();
+            return;
+        }
+    }
+
+    // 3. Beda jenis → swap
+    InventorySlots.Swap(Source, Dest);
+    OnInventoryUpdated.Broadcast();
+}

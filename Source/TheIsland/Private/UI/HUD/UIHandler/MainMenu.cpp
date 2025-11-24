@@ -19,7 +19,6 @@ void UMainMenu::NativeConstruct()
 bool UMainMenu::NativeOnDrop(
 	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
-	UE_LOG(LogTemp, Warning, TEXT(">>> MainMenu::NativeOnDrop DIPANGGIL <<<"));
 	
 	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
 
@@ -37,7 +36,7 @@ bool UMainMenu::NativeOnDrop(
 	}
 	
 	UE_LOG(LogTemp, Warning,
-		TEXT("MainMenu menerima DROP item %s (di luar inventory)"),
+		TEXT("Item %s Drop Out"),
 		*ItemDragDrop->ItemID.ToString());
 
 	return true;  // penting supaya event tidak bubble!!

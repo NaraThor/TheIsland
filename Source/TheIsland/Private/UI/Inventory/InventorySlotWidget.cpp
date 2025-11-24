@@ -7,6 +7,7 @@
 #include "Handler/ItemDragDropOperation.h"
 #include "Inventory/Item/BaseItem.h"
 #include "UI/Inventory/DragItemVisual.h"
+#include "UI/Inventory/InventoryWidget.h"
 
 //DragDrop
 void UInventorySlotWidget::SetItemData(const FInventorySlot& InSlot, const FDataItem* Row)
@@ -92,22 +93,37 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry,cons
 	UItemDragDropOperation* DragOp = NewObject<UItemDragDropOperation>(this);
 	
 	//Data
-	DragOp->ItemID = SlotData.ItemID;           // WAJIB
-	DragOp->DragQuantity = SlotData.Quantity;   // opsional tapi berguna
-	DragOp->SlotData = SlotData;                // salin full struct (opsional)
-	DragOp->SlotIndex = SlotIndex;              // WAJIB: index yang kita set dari InventoryWidget
+	DragOp->ItemID = SlotData.ItemID;				// WAJIB
+	DragOp->DragQuantity = SlotData.Quantity;		// opsional tapi berguna
+	DragOp->SlotData = SlotData;					// salin full struct (opsional)
+	DragOp->SlotIndex = SlotIndex;					// WAJIB: index yang kita set dari InventoryWidget
+	DragOp->SourceInventory = OwningInventory;		// jika tersedia
 	// SourceInventory bisa diisi jika kamu mau:
 	// DragOp->SourceInventory = Owning inventory pointer if available
 	
 	// Buat visual drag jika kamu punya widget classnya (opsional)
-	if (DragItemVisualClass)
+	if (DragItemVisualClass && ItemRow)
 	{
 		UDragItemVisual* Visual = CreateWidget<UDragItemVisual>(GetOwningPlayer(), DragItemVisualClass);
 		if (Visual)
 		{
-			// contoh set icon/amount di visual jika ada binding
-			// Visual->SetIcon( ... );
+			// Set icon & border
+			Visual->ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
+			Visual->ItemBorder->SetBrushColor(ItemBorder->GetBrushColor());
+
+			// Set jumlah jika stackable
+			if (ItemRow->ItemNumeric.IsStackable())
+			{
+				Visual->ItemQuantity->SetText(FText::AsNumber(SlotData.Quantity));
+			}
+			else
+			{
+				Visual->ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
+			}
+
+			// Assign visual ke drag operation
 			DragOp->DefaultDragVisual = Visual;
+			DragOp->Pivot = EDragPivot::CenterCenter;
 		}
 	}
 
@@ -116,8 +132,25 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry,cons
 
 bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
-	// Jangan handle di slot; biarkan parent InventoryWidget yang menangani swap/move.
-	// Jika kamu ingin slot menangani drop untuk stack merge atau swap langsung,
-	// implementasikan di sini dan return true untuk consume.
+	UE_LOG(LogTemp, Warning, TEXT("[SLOT] OnDrop masuk ke SlotIndex = %d"), SlotIndex);
+
+	if (UItemDragDropOperation* DragOp = Cast<UItemDragDropOperation>(InOperation))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SLOT] DragOp valid! ItemID = %s, Qty = %d, SourceIndex = %d"),
+			*DragOp->ItemID.ToString(),
+			DragOp->DragQuantity,
+			DragOp->SlotIndex
+		);
+
+		// 🔥 langsung panggil inventory widget
+		if (InventoryWidgetRef)
+		{
+			InventoryWidgetRef->HandleSlotDrop(this, DragOp);
+		}
+
+		return true;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[SLOT] DragOp TIDAK VALID"));
 	return false;
 }

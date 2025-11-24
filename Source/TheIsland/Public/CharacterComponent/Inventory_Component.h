@@ -142,6 +142,7 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Inventory")
     bool DropItem(const FName& ItemID, int32 Quantity);
+    void MoveSlotToSlot(int32 Source, int32 Dest);
 
     // -----------------------------
     // Helpers

@@ -2,6 +2,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Handler/ItemDragDropOperation.h"
 #include "InventoryWidget.generated.h"
 
 class ACharacterOrigin;
@@ -18,6 +19,8 @@ public:
 
 	UFUNCTION()
 	void RefreshInventory();
+
+	void HandleSlotDrop(UInventorySlotWidget* DropTargetSlot,UItemDragDropOperation* DragOp);
 
 	UPROPERTY(meta = (BindWidget))
 	UWrapBox* InventoryPanel;

@@ -25,6 +25,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Inventory")
 	FInventorySlot SlotData;
 
+	UPROPERTY()
+	UInventory_Component* OwningInventory;
+
 	// Set data slot + row
 	void SetItemData(const FInventorySlot& InSlot, const FDataItem* Row);
 
@@ -33,6 +36,15 @@ public:
 	void SetSlotIndex(int32 InIndex) { SlotIndex = InIndex; }
 	
 	void RefreshVisual();
+
+	// =====================================================
+	// DELEGATE AGAR PARENT BISA TERIMA EVENT DROP
+	// =====================================================
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FOnSlotDroppedSignature,UInventorySlotWidget*, TargetSlot,UItemDragDropOperation*, DragOp);
+	
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	FOnSlotDroppedSignature OnSlotDropped;
 
 protected:
 	// --- UI Widgets ---
@@ -51,6 +63,9 @@ protected:
 	// --- Slot Data ---
 	const FDataItem* ItemRow;
 
+	UPROPERTY()
+	class UInventoryWidget* InventoryWidgetRef;
+	
 	// --- Overrides ---
 	virtual void NativeConstruct() override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent) override;
