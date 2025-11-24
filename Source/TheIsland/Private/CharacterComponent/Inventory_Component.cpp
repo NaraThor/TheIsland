@@ -164,6 +164,8 @@ bool UInventory_Component::DropItem(const FName& ItemID, int32 Quantity)
 
 void UInventory_Component::MoveSlotToSlot(int32 Source, int32 Dest)
 {
+    UE_LOG(LogTemp, Warning, TEXT("[INVENTORY_COMPONENT] MoveSlotToSlot called: %d -> %d"), Source, Dest);
+    
     if (!InventorySlots.IsValidIndex(Source) ||
         !InventorySlots.IsValidIndex(Dest))
         return;

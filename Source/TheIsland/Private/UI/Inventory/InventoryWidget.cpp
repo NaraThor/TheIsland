@@ -39,7 +39,6 @@ void UInventoryWidget::RefreshInventory()
 
 	InventoryPanel->ClearChildren();
 
-	// Ambil semua slot (termasuk yang kosong)
 	const TArray<FInventorySlot>& Slots = InventoryReference->GetInventoryContents();
 
 	for (int32 i = 0; i < Slots.Num(); i++)
@@ -58,8 +57,15 @@ void UInventoryWidget::RefreshInventory()
 		// SET SLOT INDEX DI SINI
 		ItemSlotWidget->SetSlotIndex(i);
 
+		// **IMPORTANT: assign refs so slot dapat memanggil widget/component**
+		ItemSlotWidget->InventoryWidgetRef = this;
+		ItemSlotWidget->OwningInventory = InventoryReference;
+
 		// Serahkan data ke widget (Row bisa nullptr → otomatis dianggap slot kosong)
 		ItemSlotWidget->SetItemData(InventorySlot, ItemRow);
+
+		// (optional) jika kamu pake delegate pattern:
+		// ItemSlotWidget->OnSlotDropped.AddDynamic(this, &UInventoryWidget::HandleSlotDrop);
 
 		// Tambahkan ke panel UI
 		InventoryPanel->AddChild(ItemSlotWidget);

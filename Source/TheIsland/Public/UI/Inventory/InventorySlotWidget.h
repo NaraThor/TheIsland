@@ -43,8 +43,11 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
 	FOnSlotDroppedSignature,UInventorySlotWidget*, TargetSlot,UItemDragDropOperation*, DragOp);
 	
-	UPROPERTY(BlueprintAssignable, Category = "Inventory")
-	FOnSlotDroppedSignature OnSlotDropped;
+	//UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	//FOnSlotDroppedSignature OnSlotDropped;
+
+	UPROPERTY()
+	class UInventoryWidget* InventoryWidgetRef;
 
 protected:
 	// --- UI Widgets ---
@@ -63,8 +66,7 @@ protected:
 	// --- Slot Data ---
 	const FDataItem* ItemRow;
 
-	UPROPERTY()
-	class UInventoryWidget* InventoryWidgetRef;
+
 	
 	// --- Overrides ---
 	virtual void NativeConstruct() override;
