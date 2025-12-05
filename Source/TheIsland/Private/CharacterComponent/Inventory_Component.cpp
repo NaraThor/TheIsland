@@ -71,6 +71,22 @@ int32 UInventory_Component::FindEmptySlot() const
     return INDEX_NONE;
 }
 
+int32 UInventory_Component::FindSlotWithItem(
+    const FName& ItemID) const
+{
+    if (ItemID.IsNone()) return INDEX_NONE;
+
+    for (int32 i = 0; i < InventorySlots.Num(); i++)
+    {
+        if (InventorySlots[i].ItemID == ItemID)
+        {
+            return i;
+        }
+    }
+
+    return INDEX_NONE;
+}
+
 // ----------------------------------------------------------
 // ADD ITEM
 // ----------------------------------------------------------
@@ -136,32 +152,6 @@ FItemAddResult UInventory_Component::HandleAddItem(const FInventorySlot& SlotToA
     return FItemAddResult::AddedAll(AddedAmount, FText::FromString("Item added successfully"));
 }
 
-// ----------------------------------------------------------
-// DROP ITEM
-// ----------------------------------------------------------
-bool UInventory_Component::DropItem(const FName& ItemID, int32 Quantity)
-{
-    if (Quantity <= 0) return false;
-
-    int32 SlotIndex = FindExistingStack(ItemID);
-    if (SlotIndex == INDEX_NONE) return false;
-
-    FInventorySlot& Slot = InventorySlots[SlotIndex];
-
-    if (Slot.Quantity < Quantity) return false;
-
-    Slot.Quantity -= Quantity;
-
-    if (Slot.Quantity <= 0)
-    {
-        Slot.ItemID = NAME_None;
-        Slot.Quantity = 0;
-    }
-
-    OnInventoryUpdated.Broadcast();
-    return true;
-}
-
 void UInventory_Component::MoveSlotToSlot(int32 Source, int32 Dest)
 {
     UE_LOG(LogTemp, Warning, TEXT("[INVENTORY_COMPONENT] MoveSlotToSlot called: %d -> %d"), Source, Dest);
@@ -215,3 +205,37 @@ void UInventory_Component::MoveSlotToSlot(int32 Source, int32 Dest)
     InventorySlots.Swap(Source, Dest);
     OnInventoryUpdated.Broadcast();
 }
+
+bool UInventory_Component::DropItemBySlotIndex(
+    int32 SlotIndex, int32 Quantity)
+{
+    // Validasi index
+    if (!InventorySlots.IsValidIndex(SlotIndex))
+        return false;
+
+    FInventorySlot& Slot = InventorySlots[SlotIndex];
+
+    // Slot kosong
+    if (Slot.ItemID == NAME_None || Slot.Quantity <= 0)
+        return false;
+
+    // Quantity kurang
+    if (Slot.Quantity < Quantity)
+        return false;
+
+    // Kurangi jumlah
+    Slot.Quantity -= Quantity;
+
+    // Jika habis, kosongkan slot
+    if (Slot.Quantity <= 0)
+    {
+        Slot.ItemID = NAME_None;
+        Slot.Quantity = 0;
+    }
+
+    // Update UI
+    OnInventoryUpdated.Broadcast();
+
+    return true;
+}
+

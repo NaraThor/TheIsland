@@ -141,8 +141,12 @@ public:
     FItemAddResult HandleAddItem(const FInventorySlot& SlotToAdd);
 
     UFUNCTION(BlueprintCallable, Category="Inventory")
-    bool DropItem(const FName& ItemID, int32 Quantity);
+    //bool DropItem(const FName& ItemID, int32 Quantity);
+
     void MoveSlotToSlot(int32 Source, int32 Dest);
+
+    bool DropItemBySlotIndex(int32 SlotIndex, int32 Quantity);
+   
 
     // -----------------------------
     // Helpers
@@ -150,7 +154,8 @@ public:
     const FDataItem* GetItemRow(const FName& ItemID) const;
     int32 FindExistingStack(const FName& ItemID) const;
     int32 FindEmptySlot() const;
-
+    int32 FindSlotWithItem(const FName& ItemID) const;
+    
     // -----------------------------
     // EVENT UI
     // -----------------------------

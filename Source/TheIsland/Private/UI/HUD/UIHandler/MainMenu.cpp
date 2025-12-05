@@ -2,6 +2,7 @@
 #include "Character/CharacterOrigin.h"
 #include "Handler/ItemDragDropOperation.h"
 #include "UI/Inventory/InventoryWidget.h"
+#include "CharacterComponent/Inventory_Component.h"
 
 
 void UMainMenu::NativeOnInitialized()
@@ -19,7 +20,6 @@ void UMainMenu::NativeConstruct()
 bool UMainMenu::NativeOnDrop(
 	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
-	
 	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
 
 	if (!ItemDragDrop)
@@ -27,19 +27,27 @@ bool UMainMenu::NativeOnDrop(
 		UE_LOG(LogTemp, Warning, TEXT("Error 1"));
 		return false;
 	}
-	
 
 	if (ItemDragDrop->ItemID == NAME_None)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Error 2"));
 		return false;
 	}
-	
-	UE_LOG(LogTemp, Warning,
-		TEXT("Item %s Drop Out"),
-		*ItemDragDrop->ItemID.ToString());
 
-	return true;  // penting supaya event tidak bubble!!
+	ACharacterOrigin* Player = Cast<ACharacterOrigin>(GetOwningPlayerPawn());
+	if (!Player) return true;
+
+	UInventory_Component* Inv = Player->GetInventory();   // << BENAR
+	if (!Inv) return true;
+
+	// Drop berdasarkan slot index
+	Inv->DropItemBySlotIndex(ItemDragDrop->SlotIndex, ItemDragDrop->DragQuantity);
+
+	UE_LOG(LogTemp, Warning, TEXT("Dropped %s x%d"),
+		*ItemDragDrop->ItemID.ToString(),
+		ItemDragDrop->DragQuantity);
+
+	return true;
 }
 
 
