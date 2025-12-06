@@ -84,13 +84,7 @@ bool UInventoryWidget::NativeOnDrop(
 
 	if (bInside)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Drop INSIDE Inventory Panel"));
-		//TODO: lakukan swap/move/merge berdasarkan ItemDragDrop->SlotIndex dan target slot
-
-		// Contoh pseudocode:
-		// int32 SourceIndex = ItemDragDrop->SlotIndex;
-		// int32 TargetIndex = DetermineTargetSlotIndexFromPosition(DropPosScreen);
-		// InventoryReference->MoveOrSwap(SourceIndex, TargetIndex);
+		RefreshInventory();
 
 		return true; // Inventory menangani drop
 	}

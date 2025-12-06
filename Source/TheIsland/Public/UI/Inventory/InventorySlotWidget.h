@@ -46,6 +46,8 @@ public:
 
 	bool bIsSplitDrag = false;
 
+	void RestoreQuantityAfterCancel(int32 DraggedAmount);
+
 protected:
 	
 	// --- UI Widgets ---
@@ -73,9 +75,8 @@ protected:
 
 	void UpdateSlotAfterSplit(int32 NewQuantity);
 	bool NativeOnDragOver(const FGeometry& InGeometry,const FDragDropEvent&InDragDropEvent,UDragDropOperation*InOperation);
-	void NativeOnDragLeave(
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation);
+	void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation);
+
 
 
 	void RefreshVisual(); //pindah
