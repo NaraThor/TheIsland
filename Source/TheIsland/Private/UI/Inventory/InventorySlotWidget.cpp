@@ -10,7 +10,8 @@
 #include "UI/Inventory/InventoryWidget.h"
 
 //DragDrop
-void UInventorySlotWidget::SetItemData(const FInventorySlot& InSlot, const FDataItem* Row)
+void UInventorySlotWidget::SetItemData(
+	const FInventorySlot& InSlot, const FDataItem* Row)
 {
 	SlotData = InSlot; // assign ke member
 	ItemRow = Row;
@@ -58,6 +59,7 @@ void UInventorySlotWidget::RefreshVisual()
 	}
 }
 
+
 // ----------------------------------------------------------
 // NativeConstruct
 // ----------------------------------------------------------
@@ -67,10 +69,23 @@ void UInventorySlotWidget::NativeConstruct()
 	RefreshVisual(); // pertama kali
 }
 
-FReply UInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)
+FReply UInventorySlotWidget::NativeOnMouseButtonDown(
+	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)
 {
+
+	// Hitung split mode saat mouse down (agar konsisten)
+	if (FSlateApplication::IsInitialized() && FSlateApplication::Get().GetModifierKeys().IsControlDown())
+	{
+		bIsSplitDrag = true;
+	}
+	else
+	{
+		bIsSplitDrag = false;
+	}
+	
 	FReply Reply = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	return Reply.Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
+
 }
 
 void UInventorySlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
@@ -78,7 +93,8 @@ void UInventorySlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 	Super::NativeOnMouseLeave(InMouseEvent);
 }
 
-void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)
+void UInventorySlotWidget::NativeOnDragDetected(
+	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
@@ -93,13 +109,43 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry,cons
 	UItemDragDropOperation* DragOp = NewObject<UItemDragDropOperation>(this);
 	
 	//Data
-	DragOp->ItemID = SlotData.ItemID;				// WAJIB
-	DragOp->DragQuantity = SlotData.Quantity;		// opsional tapi berguna
-	DragOp->SlotData = SlotData;					// salin full struct (opsional)
-	DragOp->SlotIndex = SlotIndex;					// WAJIB: index yang kita set dari InventoryWidget
+	DragOp->ItemID			= SlotData.ItemID;				// WAJIB
+	//DragOp->DragQuantity	= SlotData.Quantity;		// opsional tapi berguna
+	DragOp->SlotData		= SlotData;					// salin full struct (opsional)
+	DragOp->SlotIndex		= SlotIndex;					// WAJIB: index yang kita set dari InventoryWidget
 	DragOp->SourceInventory = OwningInventory;		// jika tersedia
 	// SourceInventory bisa diisi jika kamu mau:
 	// DragOp->SourceInventory = Owning inventory pointer if available
+
+	//Dragtype
+	if (InMouseEvent.IsControlDown())
+	{
+		// SPLIT DRAG ambil setengah
+		DragOp->DragType = EDragType::DT_Split;
+		DragOp->bIsSplitDrag = true;
+		
+		DragOp->SplitAmount = FMath::CeilToInt(SlotData.Quantity / 2.0f);
+		DragOp->DragQuantity = DragOp->SplitAmount;
+
+		//KURANGI JUMLAH DI SLOT ASLI
+		const int32 Remaining = SlotData.Quantity - DragOp->DragQuantity;
+		SlotData.Quantity = Remaining;
+
+		if (Remaining <= 0)
+		{
+			SlotData.Clear();
+		}
+
+	}
+	else
+	{
+		// NORMAL DRAG: bawa seluruh slot
+		DragOp->DragType = EDragType::DT_Normal;
+		DragOp->bIsSplitDrag = false;
+		DragOp->SplitAmount = 0;
+		DragOp->DragQuantity = SlotData.Quantity;
+	}
+	
 	
 	// Buat visual drag jika kamu punya widget classnya (opsional)
 	if (DragItemVisualClass && ItemRow)
@@ -114,23 +160,30 @@ void UInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry,cons
 			// Set jumlah jika stackable
 			if (ItemRow->ItemNumeric.IsStackable())
 			{
-				Visual->ItemQuantity->SetText(FText::AsNumber(SlotData.Quantity));
+				// pastikan DragOp valid sebelum akses
+				const int32 DisplayQuantity = DragOp->DragQuantity;
+				Visual->ItemQuantity->SetText(FText::AsNumber(DisplayQuantity));
+				Visual->ItemQuantity->SetVisibility(ESlateVisibility::Visible);
 			}
 			else
 			{
 				Visual->ItemQuantity->SetVisibility(ESlateVisibility::Collapsed);
 			}
 
+
 			// Assign visual ke drag operation
 			DragOp->DefaultDragVisual = Visual;
 			DragOp->Pivot = EDragPivot::CenterCenter;
 		}
 	}
-
+	UE_LOG(LogTemp, Warning, TEXT("OnDragDetected: Type=%d DragQty=%d Split=%d"),
+	(int)DragOp->DragType, DragOp->DragQuantity, DragOp->SplitAmount);
+	
 	OutOperation = DragOp;
 }
 
-bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
+bool UInventorySlotWidget::NativeOnDrop(
+	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
 {
 	UE_LOG(LogTemp, Warning, TEXT("[SLOT] OnDrop masuk ke SlotIndex = %d"), SlotIndex);
 
@@ -142,7 +195,7 @@ bool UInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry,const FDragD
 			DragOp->SlotIndex
 		);
 
-		// 🔥 langsung panggil inventory widget
+		//panggil inventory widget
 		if (InventoryWidgetRef)
 		{
 			InventoryWidgetRef->HandleSlotDrop(this, DragOp);

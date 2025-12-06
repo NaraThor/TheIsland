@@ -23,6 +23,18 @@ void UInventory_Component::BeginPlay()
     OnInventoryUpdated.Broadcast();
 }
 
+bool UInventory_Component::IsValidSlot(int32 Index) const
+{
+    return InventorySlots.IsValidIndex(Index);
+}
+
+FInventorySlot* UInventory_Component::GetSlotPtr(int32 Index)
+{
+    return InventorySlots.IsValidIndex(Index)
+        ? &InventorySlots[Index]
+        : nullptr;
+}
+
 // ----------------------------------------------------------
 // GET ITEM ROW
 // ----------------------------------------------------------
@@ -238,4 +250,71 @@ bool UInventory_Component::DropItemBySlotIndex(
 
     return true;
 }
+
+bool UInventory_Component::SplitItem(
+    int32 SourceSlot, int32 DestSlot, int32 SplitQuantity)
+{
+    // Validasi index
+    if (!IsValidSlot(SourceSlot) || !IsValidSlot(DestSlot))
+        return false;
+
+    if (SplitQuantity <= 0)
+        return false;
+
+    FInventorySlot* FromSlot = GetSlotPtr(SourceSlot);
+    FInventorySlot* ToSlot   = GetSlotPtr(DestSlot);
+
+    if (!FromSlot || FromSlot->IsEmpty())
+        return false;
+
+    // Tidak boleh split semua item
+    if (SplitQuantity >= FromSlot->Quantity)
+        return false;
+
+    // === CASE 1: Slot tujuan kosong ===
+    if (!ToSlot || ToSlot->IsEmpty())
+    {
+        ToSlot->ItemID   = FromSlot->ItemID;
+        ToSlot->Quantity = SplitQuantity;
+
+        FromSlot->Quantity -= SplitQuantity;
+
+        if (FromSlot->Quantity <= 0)
+            *FromSlot = FInventorySlot();
+
+        OnInventoryUpdated.Broadcast();
+        return true;
+    }
+
+    // === CASE 2: Merge dengan item sama ===
+    if (ToSlot->ItemID == FromSlot->ItemID)
+    {
+        const FDataItem* Row = GetItemRow(FromSlot->ItemID);
+
+        if (!Row) return false;
+
+        if (Row->ItemNumeric.IsStackable())
+        {
+            int32 MaxStack = Row->ItemNumeric.MaxStack;
+
+            int32 Before = ToSlot->Quantity;
+            int32 After  = Before + SplitQuantity;
+
+            ToSlot->Quantity = FMath::Min(After, MaxStack);
+
+            int32 Used = ToSlot->Quantity - Before;
+            FromSlot->Quantity -= Used;
+
+            if (FromSlot->Quantity <= 0)
+                *FromSlot = FInventorySlot();
+            
+            OnInventoryUpdated.Broadcast();
+            return true;
+        }
+    }
+
+    // === CASE 3: Item beda → gagal split ===
+    return false;
+}
+
 

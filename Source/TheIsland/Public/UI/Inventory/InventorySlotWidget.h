@@ -26,7 +26,7 @@ public:
 	FInventorySlot SlotData;
 
 	UPROPERTY()
-	UInventory_Component* OwningInventory;
+	class UInventory_Component* OwningInventory;
 
 	// Set data slot + row
 	void SetItemData(const FInventorySlot& InSlot, const FDataItem* Row);
@@ -34,8 +34,6 @@ public:
 	// Set index
 	UFUNCTION()
 	void SetSlotIndex(int32 InIndex) { SlotIndex = InIndex; }
-	
-	void RefreshVisual();
 
 	// =====================================================
 	// DELEGATE AGAR PARENT BISA TERIMA EVENT DROP
@@ -43,13 +41,13 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
 	FOnSlotDroppedSignature,UInventorySlotWidget*, TargetSlot,UItemDragDropOperation*, DragOp);
 	
-	//UPROPERTY(BlueprintAssignable, Category = "Inventory")
-	//FOnSlotDroppedSignature OnSlotDropped;
-
 	UPROPERTY()
 	class UInventoryWidget* InventoryWidgetRef;
 
+	bool bIsSplitDrag = false;
+
 protected:
+	
 	// --- UI Widgets ---
 	UPROPERTY(meta=(BindWidget))
 	UBorder* ItemBorder;
@@ -65,8 +63,6 @@ protected:
 
 	// --- Slot Data ---
 	const FDataItem* ItemRow;
-
-
 	
 	// --- Overrides ---
 	virtual void NativeConstruct() override;
@@ -74,4 +70,10 @@ protected:
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
+
+	void RefreshVisual(); //pindah
+
+
+private:
+	bool bIsHovered = false;
 };

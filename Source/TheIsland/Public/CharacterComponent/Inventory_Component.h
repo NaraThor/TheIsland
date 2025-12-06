@@ -99,7 +99,16 @@ struct FInventorySlot
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     int32 Quantity = 0;
 
-    bool IsEmpty() const { return ItemID.IsNone() || Quantity <= 0; }
+    bool IsEmpty() const
+    {
+        return ItemID.IsNone() || Quantity <= 0;
+    }
+
+    void Clear()
+    {
+        ItemID = NAME_None;
+        Quantity = 0;
+    }
 };
 
 // ----------------------------------------------------------
@@ -117,6 +126,11 @@ public:
 protected:
     virtual void BeginPlay() override;
 
+    //HELPER..
+    // Validasi index
+    bool IsValidSlot(int32 Index) const;
+    FInventorySlot* GetSlotPtr(int32 Index);
+    
 public:
 
     // -----------------------------
@@ -140,14 +154,13 @@ public:
     UFUNCTION(BlueprintCallable, Category="Inventory")
     FItemAddResult HandleAddItem(const FInventorySlot& SlotToAdd);
 
-    UFUNCTION(BlueprintCallable, Category="Inventory")
-    //bool DropItem(const FName& ItemID, int32 Quantity);
-
     void MoveSlotToSlot(int32 Source, int32 Dest);
 
     bool DropItemBySlotIndex(int32 SlotIndex, int32 Quantity);
    
-
+    UFUNCTION(BlueprintCallable, Category="Inventory")
+    bool SplitItem(int32 SourceSlot, int32 DestSlot, int32 SplitQuantity);
+    
     // -----------------------------
     // Helpers
     // -----------------------------
@@ -161,4 +174,5 @@ public:
     // -----------------------------
     UPROPERTY(BlueprintAssignable)
     FOnInventoryUpdated OnInventoryUpdated;
+
 };

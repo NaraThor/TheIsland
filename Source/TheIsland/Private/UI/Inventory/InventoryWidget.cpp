@@ -41,33 +41,32 @@ void UInventoryWidget::RefreshInventory()
 
 	const TArray<FInventorySlot>& Slots = InventoryReference->GetInventoryContents();
 
-	for (int32 i = 0; i < Slots.Num(); i++)
+	for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); SlotIndex++)
 	{
-		const FInventorySlot& InventorySlot = Slots[i];
+		const FInventorySlot& InventorySlot = Slots[SlotIndex];
 
+		// Ambil row jika slot tidak kosong
 		const FDataItem* ItemRow = nullptr;
 		if (!InventorySlot.IsEmpty())
 		{
 			ItemRow = InventoryReference->GetItemRow(InventorySlot.ItemID);
 		}
 
-		UInventorySlotWidget* ItemSlotWidget = CreateWidget<UInventorySlotWidget>(this, InventorySlotClass);
+		UInventorySlotWidget* ItemSlotWidget =
+			CreateWidget<UInventorySlotWidget>(this, InventorySlotClass);
 		if (!ItemSlotWidget) continue;
 
-		// SET SLOT INDEX DI SINI
-		ItemSlotWidget->SetSlotIndex(i);
+		// Set slot index (lebih jelas sekarang)
+		ItemSlotWidget->SetSlotIndex(SlotIndex);
 
-		// **IMPORTANT: assign refs so slot dapat memanggil widget/component**
+		// Assign reference
 		ItemSlotWidget->InventoryWidgetRef = this;
-		ItemSlotWidget->OwningInventory = InventoryReference;
+		ItemSlotWidget->OwningInventory   = InventoryReference;
 
-		// Serahkan data ke widget (Row bisa nullptr → otomatis dianggap slot kosong)
+		// Set data item
 		ItemSlotWidget->SetItemData(InventorySlot, ItemRow);
 
-		// (optional) jika kamu pake delegate pattern:
-		// ItemSlotWidget->OnSlotDropped.AddDynamic(this, &UInventoryWidget::HandleSlotDrop);
-
-		// Tambahkan ke panel UI
+		// Tambahkan widget ke panel
 		InventoryPanel->AddChild(ItemSlotWidget);
 	}
 }
@@ -103,18 +102,28 @@ void UInventoryWidget::HandleSlotDrop(
 	UInventorySlotWidget* DropTargetSlot,
 	UItemDragDropOperation* DragOp)
 {
-	if (!DropTargetSlot || !DragOp) return;
-	if (!InventoryReference) return;
+	if (!InventoryReference || !DragOp) return;
 
-	UE_LOG(LogTemp, Warning, TEXT("[INV_WIDGET] Swap %d → %d"),
-		DragOp->SlotIndex,
-		DropTargetSlot->SlotIndex
-	);
+    const int32 FromIndex = DragOp->SlotIndex;
+    const int32 ToIndex   = DropTargetSlot->SlotIndex;
 
-	InventoryReference->MoveSlotToSlot(
-		DragOp->SlotIndex,
-		DropTargetSlot->SlotIndex
-	);
+    // Case 1: SAME SLOT → ignore
+    if (FromIndex == ToIndex)
+        return;
 
-	RefreshInventory();
+    switch (DragOp->DragType)
+    {
+        case EDragType::DT_Normal:
+            InventoryReference->MoveSlotToSlot(FromIndex, ToIndex);
+            break;
+
+        case EDragType::DT_Split:
+            InventoryReference->SplitItem(FromIndex, ToIndex, DragOp->DragQuantity);
+            break;
+
+        default:
+            break;
+    }
+
+    RefreshInventory();
 }
