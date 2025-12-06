@@ -71,9 +71,18 @@ protected:
 	virtual void NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
 
+	void UpdateSlotAfterSplit(int32 NewQuantity);
+	bool NativeOnDragOver(const FGeometry& InGeometry,const FDragDropEvent&InDragDropEvent,UDragDropOperation*InOperation);
+	void NativeOnDragLeave(
+		const FDragDropEvent& InDragDropEvent,
+		UDragDropOperation* InOperation);
+
+
 	void RefreshVisual(); //pindah
 
 
 private:
 	bool bIsHovered = false;
+
+	int32 PreviewQuantity = -1; // -1 = tidak ada preview
 };

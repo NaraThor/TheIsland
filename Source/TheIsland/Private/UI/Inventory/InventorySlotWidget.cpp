@@ -50,6 +50,7 @@ void UInventorySlotWidget::RefreshVisual()
 	// QUANTITY
 	if (ItemRow->ItemNumeric.IsStackable())
 	{
+		int32 QtyToShow = (PreviewQuantity >= 0) ? PreviewQuantity: SlotData.Quantity;
 		ItemQuantity->SetText(FText::AsNumber(SlotData.Quantity));
 		ItemQuantity->SetVisibility(ESlateVisibility::Visible);
 	}
@@ -73,16 +74,9 @@ FReply UInventorySlotWidget::NativeOnMouseButtonDown(
 	const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)
 {
 
-	// Hitung split mode saat mouse down (agar konsisten)
-	if (FSlateApplication::IsInitialized() && FSlateApplication::Get().GetModifierKeys().IsControlDown())
-	{
-		bIsSplitDrag = true;
-	}
-	else
-	{
-		bIsSplitDrag = false;
-	}
-	
+	bIsSplitDrag = FSlateApplication::IsInitialized() &&
+				   FSlateApplication::Get().GetModifierKeys().IsControlDown();
+
 	FReply Reply = Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	return Reply.Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
 
@@ -109,33 +103,33 @@ void UInventorySlotWidget::NativeOnDragDetected(
 	UItemDragDropOperation* DragOp = NewObject<UItemDragDropOperation>(this);
 	
 	//Data
-	DragOp->ItemID			= SlotData.ItemID;				// WAJIB
-	//DragOp->DragQuantity	= SlotData.Quantity;		// opsional tapi berguna
-	DragOp->SlotData		= SlotData;					// salin full struct (opsional)
+	DragOp->ItemID			= SlotData.ItemID;				// ID Item
+	DragOp->SlotData		= SlotData;						// Salin full struct (opsional)
 	DragOp->SlotIndex		= SlotIndex;					// WAJIB: index yang kita set dari InventoryWidget
-	DragOp->SourceInventory = OwningInventory;		// jika tersedia
+	DragOp->SourceInventory = OwningInventory;				// Jika tersedia
+	DragOp->SourceInventorySlotWidget = this;
 	// SourceInventory bisa diisi jika kamu mau:
 	// DragOp->SourceInventory = Owning inventory pointer if available
 
 	//Dragtype
-	if (InMouseEvent.IsControlDown())
+	if (InMouseEvent.IsControlDown() && SlotData.Quantity > 1)
 	{
-		// SPLIT DRAG ambil setengah
+		// SPLIT DRAG
+		int32 CalculatedSplit = FMath::CeilToInt(SlotData.Quantity / 2.0f);
+
 		DragOp->DragType = EDragType::DT_Split;
 		DragOp->bIsSplitDrag = true;
-		
-		DragOp->SplitAmount = FMath::CeilToInt(SlotData.Quantity / 2.0f);
-		DragOp->DragQuantity = DragOp->SplitAmount;
+		DragOp->SplitAmount = CalculatedSplit;
+		DragOp->DragQuantity = CalculatedSplit;
 
-		//KURANGI JUMLAH DI SLOT ASLI
+		// Kurangi slot asal
 		const int32 Remaining = SlotData.Quantity - DragOp->DragQuantity;
 		SlotData.Quantity = Remaining;
 
 		if (Remaining <= 0)
-		{
 			SlotData.Clear();
-		}
 
+		RefreshVisual();
 	}
 	else
 	{
@@ -161,8 +155,7 @@ void UInventorySlotWidget::NativeOnDragDetected(
 			if (ItemRow->ItemNumeric.IsStackable())
 			{
 				// pastikan DragOp valid sebelum akses
-				const int32 DisplayQuantity = DragOp->DragQuantity;
-				Visual->ItemQuantity->SetText(FText::AsNumber(DisplayQuantity));
+				Visual->ItemQuantity->SetText(FText::AsNumber(DragOp->DragQuantity));
 				Visual->ItemQuantity->SetVisibility(ESlateVisibility::Visible);
 			}
 			else
@@ -190,10 +183,7 @@ bool UInventorySlotWidget::NativeOnDrop(
 	if (UItemDragDropOperation* DragOp = Cast<UItemDragDropOperation>(InOperation))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[SLOT] DragOp valid! ItemID = %s, Qty = %d, SourceIndex = %d"),
-			*DragOp->ItemID.ToString(),
-			DragOp->DragQuantity,
-			DragOp->SlotIndex
-		);
+			*DragOp->ItemID.ToString(),DragOp->DragQuantity,DragOp->SlotIndex);
 
 		//panggil inventory widget
 		if (InventoryWidgetRef)
@@ -206,4 +196,39 @@ bool UInventorySlotWidget::NativeOnDrop(
 
 	UE_LOG(LogTemp, Warning, TEXT("[SLOT] DragOp TIDAK VALID"));
 	return false;
+}
+
+void UInventorySlotWidget::UpdateSlotAfterSplit(int32 NewQuantity)
+{
+	SlotData.Quantity = NewQuantity;
+	if (SlotData.Quantity <= 0)
+	{
+		SlotData.Clear();
+	}
+	RefreshVisual();
+}
+
+bool UInventorySlotWidget::NativeOnDragOver(
+	const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	if (UItemDragDropOperation* DragOp = Cast<UItemDragDropOperation>(InOperation))
+	{
+		if (DragOp->DragType == EDragType::DT_Split)
+		{
+			PreviewQuantity = DragOp->SplitAmount; // hanya preview
+			RefreshVisual();
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UInventorySlotWidget::NativeOnDragLeave(
+	const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
+
+	PreviewQuantity = -1; // reset preview
+	RefreshVisual();
 }

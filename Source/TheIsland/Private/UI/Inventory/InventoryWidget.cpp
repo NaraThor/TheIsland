@@ -29,6 +29,7 @@ void UInventoryWidget::NativeOnInitialized()
 		*GetNameSafe(GetOwningPlayerPawn()));
 
 	UE_LOG(LogTemp, Warning, TEXT("UI Refresh From Inventory Work!!! %s"), *GetName());
+	RefreshInventory();
 }
 
 
@@ -99,8 +100,7 @@ bool UInventoryWidget::NativeOnDrop(
 }
 
 void UInventoryWidget::HandleSlotDrop(
-	UInventorySlotWidget* DropTargetSlot,
-	UItemDragDropOperation* DragOp)
+	UInventorySlotWidget* DropTargetSlot,UItemDragDropOperation* DragOp)
 {
 	if (!InventoryReference || !DragOp) return;
 

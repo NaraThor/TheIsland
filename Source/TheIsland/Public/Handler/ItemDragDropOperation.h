@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/DragDropOperation.h"
 #include "CharacterComponent/Inventory_Component.h"
+#include "UI/Inventory/InventorySlotWidget.h"
 #include "ItemDragDropOperation.generated.h"
 
 class UBaseItem;
@@ -52,5 +53,8 @@ public :
 	// Jumlah item hasil split
 	UPROPERTY(BlueprintReadWrite)
 	int32 SplitAmount = 0;
+
+	UPROPERTY(BlueprintReadWrite)
+	class UInventorySlotWidget* SourceInventorySlotWidget;
 	
 };
