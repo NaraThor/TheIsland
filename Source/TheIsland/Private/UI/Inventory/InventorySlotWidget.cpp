@@ -47,30 +47,46 @@ void UInventorySlotWidget::NativeOnDragDetected(
 	// Tentukan jumlah drag & tipe (normal atau split)
 	if (Event.IsControlDown() && SlotData.Quantity > 1)
 	{
+		// Split drag, ambil setengah
 		const int32 SplitQty = FMath::CeilToInt(SlotData.Quantity / 2.f);
 		DragOp->DragType     = EDragType::DT_Split;
 		DragOp->bIsSplitDrag = true;
 		DragOp->DragQuantity = SplitQty;
+
+		// Kurangi slot sumber secara langsung
+		SlotData.Quantity -= SplitQty;
 	}
 	else
 	{
+		// Normal drag, ambil semua
 		DragOp->DragType     = EDragType::DT_Normal;
 		DragOp->DragQuantity = SlotData.Quantity;
+
+		// Hilangkan semua dari slot
+		SlotData.Quantity = 0;
 	}
 
+	// Refresh slot visual agar slot asal update
+	RefreshVisual();
+
 	// --- Buat drag visual ---
-	if (DragVisualClass) // Pastikan class drag visual valid
+	if (DragVisualClass && ItemRow) // Pastikan class & item valid
 	{
 		UDragItemVisual* Visual = CreateWidget<UDragItemVisual>(GetOwningPlayer(), DragVisualClass);
-		if (Visual && ItemRow) // Pastikan item row valid
+		if (Visual)
 		{
 			Visual->ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
 			Visual->ItemQuantity->SetText(FText::AsNumber(DragOp->DragQuantity));
+
 			DragOp->DefaultDragVisual = Visual;
 			DragOp->Pivot = EDragPivot::CenterCenter;
+
+			// Simpan pointer ke visual agar bisa diupdate realtime
+			DragOp->DragVisual = Visual;
 		}
 	}
 
+	// Kirim operation ke engine
 	OutOperation = DragOp;
 }
 

@@ -4,6 +4,8 @@
 #include "Blueprint/DragDropOperation.h"
 #include "ItemDragDropOperation.generated.h"
 
+class UDragItemVisual;
+
 UENUM(BlueprintType)
 enum class EDragType : uint8
 {
@@ -25,4 +27,8 @@ public:
 
 	bool bIsSplitDrag = false;
 	bool bDroppedSuccessfully = false;
+
+	// Pointer ke visual widget
+	UPROPERTY()
+	UDragItemVisual* DragVisual = nullptr; 
 };
