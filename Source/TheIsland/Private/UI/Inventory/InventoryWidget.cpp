@@ -3,10 +3,8 @@
 #include "Character/CharacterOrigin.h"
 #include "CharacterComponent/Inventory_Component.h"
 #include "Components/WrapBox.h"
-#include "Handler/ItemDragDropOperation.h"
-#include "Inventory/Item/BaseItem.h"
 #include "UI/Inventory/InventorySlotWidget.h"
-
+#include "Handler/ItemDragDropOperation.h"
 
 void UInventoryWidget::NativeOnInitialized()
 {
@@ -15,109 +13,67 @@ void UInventoryWidget::NativeOnInitialized()
 	PlayerCharacter = Cast<ACharacterOrigin>(GetOwningPlayerPawn());
 	if (!PlayerCharacter) return;
 
-	InventoryReference = PlayerCharacter->GetInventory();
-	if (!InventoryReference) return;
+	InventoryRef = PlayerCharacter->GetInventory();
+	if (!InventoryRef) return;
 
-	InventoryReference->OnInventoryUpdated.AddDynamic(this, &UInventoryWidget::RefreshInventory);
+	InventoryRef->OnInventoryUpdated.AddDynamic(
+		this, &UInventoryWidget::RefreshInventory);
 
-	// Debug log
-	UE_LOG(LogTemp, Warning, TEXT("InventoryWidget Constructed: %s | Parent: %s | InViewport: %d | Outer: %s | OwningPawn: %s"),
-		*GetNameSafe(this),
-		*GetNameSafe(GetParent()),
-		IsInViewport() ? 1 : 0,
-		*GetNameSafe(GetOuter()),
-		*GetNameSafe(GetOwningPlayerPawn()));
-
-	UE_LOG(LogTemp, Warning, TEXT("UI Refresh From Inventory Work!!! %s"), *GetName());
 	RefreshInventory();
 }
 
-
 void UInventoryWidget::RefreshInventory()
 {
-
-	if (!InventoryReference || !InventorySlotClass) return;
+	if (!InventoryRef || !InventoryPanel || !InventorySlotClass)
+		return;
 
 	InventoryPanel->ClearChildren();
 
-	const TArray<FInventorySlot>& Slots = InventoryReference->GetInventoryContents();
+	const TArray<FInventorySlot>& Slots =
+		InventoryRef->GetInventoryContents();
 
-	for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); SlotIndex++)
+	for (int32 i = 0; i < Slots.Num(); i++)
 	{
-		const FInventorySlot& InventorySlot = Slots[SlotIndex];
+		const FInventorySlot& SlotData = Slots[i];
 
-		// Ambil row jika slot tidak kosong
-		const FDataItem* ItemRow = nullptr;
-		if (!InventorySlot.IsEmpty())
-		{
-			ItemRow = InventoryReference->GetItemRow(InventorySlot.ItemID);
-		}
+		const FDataItem* Row =
+			SlotData.IsEmpty() ? nullptr :
+			InventoryRef->GetItemRow(SlotData.ItemID);
 
-		UInventorySlotWidget* ItemSlotWidget =
+		UInventorySlotWidget* SlotWidget =
 			CreateWidget<UInventorySlotWidget>(this, InventorySlotClass);
-		if (!ItemSlotWidget) continue;
 
-		// Set slot index (lebih jelas sekarang)
-		ItemSlotWidget->SetSlotIndex(SlotIndex);
+		if (!SlotWidget) continue;
 
-		// Assign reference
-		ItemSlotWidget->InventoryWidgetRef = this;
-		ItemSlotWidget->OwningInventory   = InventoryReference;
-
-		// Set data item
-		ItemSlotWidget->SetItemData(InventorySlot, ItemRow);
-
-		// Tambahkan widget ke panel
-		InventoryPanel->AddChild(ItemSlotWidget);
+		SlotWidget->InitSlot(i, SlotData, Row, this);
+		InventoryPanel->AddChild(SlotWidget);
 	}
-}
-
-bool UInventoryWidget::NativeOnDrop(
-	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
-{
-	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
-	if (!ItemDragDrop || !InventoryPanel)
-		return false;
-
-	FVector2D DropPosScreen = InDragDropEvent.GetScreenSpacePosition();
-	bool bInside = InventoryPanel->GetCachedGeometry().IsUnderLocation(DropPosScreen);
-
-	if (bInside)
-	{
-		RefreshInventory();
-
-		return true; // Inventory menangani drop
-	}
-
-	// Drop di luar → biarkan bubble ke MainMenu
-	return false;
 }
 
 void UInventoryWidget::HandleSlotDrop(
-	UInventorySlotWidget* DropTargetSlot,UItemDragDropOperation* DragOp)
+	UInventorySlotWidget* TargetSlot,UItemDragDropOperation* DragOp)
 {
-	if (!InventoryReference || !DragOp) return;
+	if (!InventoryRef || !TargetSlot || !DragOp)
+		return;
 
-    const int32 FromIndex = DragOp->SlotIndex;
-    const int32 ToIndex   = DropTargetSlot->SlotIndex;
+	const int32 From = DragOp->FromSlotIndex;
+	const int32 To   = TargetSlot->GetSlotIndex();
 
-    // Case 1: SAME SLOT → ignore
-    if (FromIndex == ToIndex)
-        return;
+	if (From == To)
+		return;
 
-    switch (DragOp->DragType)
-    {
-        case EDragType::DT_Normal:
-            InventoryReference->MoveSlotToSlot(FromIndex, ToIndex);
-            break;
+	switch (DragOp->DragType)
+	{
+	case EDragType::DT_Normal:
+		InventoryRef->MoveSlotToSlot(From, To);
+		break;
 
-        case EDragType::DT_Split:
-            InventoryReference->SplitItem(FromIndex, ToIndex, DragOp->DragQuantity);
-            break;
+	case EDragType::DT_Split:
+		InventoryRef->SplitItem(
+			From, To, DragOp->DragQuantity);
+		break;
+	}
 
-        default:
-            break;
-    }
-
-    RefreshInventory();
+	DragOp->bDroppedSuccessfully = true;
+	RefreshInventory();
 }

@@ -2,14 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "CharacterComponent/Inventory_Component.h"// untuk FInventorySlot & FInventoryItemRow
+#include "CharacterComponent/Inventory_Component.h"
 #include "InventorySlotWidget.generated.h"
 
-class UBorder;
+class UDragItemVisual;
 class UImage;
 class UTextBlock;
-class UDragItemVisual;
+class UInventoryWidget;
 struct FDataItem;
+struct FInventorySlot;
 
 UCLASS()
 class THEISLAND_API UInventorySlotWidget : public UUserWidget
@@ -17,73 +18,37 @@ class THEISLAND_API UInventorySlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// index slot ini
-	UPROPERTY(BlueprintReadOnly, Category="Inventory")
-	int32 SlotIndex = -1;
-	
-	// Data terdalam slot
-	UPROPERTY(BlueprintReadOnly, Category="Inventory")
-	FInventorySlot SlotData;
+	void InitSlot(
+		int32 InIndex,const FInventorySlot& InSlot,const FDataItem* InRow,UInventoryWidget* InInventoryWidget);
 
-	UPROPERTY()
-	class UInventory_Component* OwningInventory;
-
-	// Set data slot + row
-	void SetItemData(const FInventorySlot& InSlot, const FDataItem* Row);
-
-	// Set index
-	UFUNCTION()
-	void SetSlotIndex(int32 InIndex) { SlotIndex = InIndex; }
-
-	// =====================================================
-	// DELEGATE AGAR PARENT BISA TERIMA EVENT DROP
-	// =====================================================
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
-	FOnSlotDroppedSignature,UInventorySlotWidget*, TargetSlot,UItemDragDropOperation*, DragOp);
-	
-	UPROPERTY()
-	class UInventoryWidget* InventoryWidgetRef;
-
-	bool bIsSplitDrag = false;
-
-	void RestoreQuantityAfterCancel(int32 DraggedAmount);
+	int32 GetSlotIndex() const { return SlotIndex; }
 
 protected:
-	
-	// --- UI Widgets ---
-	UPROPERTY(meta=(BindWidget))
-	UBorder* ItemBorder;
+	virtual FReply NativeOnMouseButtonDown(
+		const FGeometry& InGeometry,const FPointerEvent& InMouseEvent) override;
 
-	UPROPERTY(meta=(BindWidget))
-	UImage* ItemIcon;
+	virtual void NativeOnDragDetected(
+		const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation) override;
 
-	UPROPERTY(meta=(BindWidget))
-	UTextBlock* ItemQuantity;
-
-	UPROPERTY(EditDefaultsOnly, Category="Inventory Slot")
-	TSubclassOf<UDragItemVisual> DragItemVisualClass;
-
-	// --- Slot Data ---
-	const FDataItem* ItemRow;
-	
-	// --- Overrides ---
-	virtual void NativeConstruct() override;
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnDragDetected(const FGeometry& InGeometry,const FPointerEvent& InMouseEvent,UDragDropOperation*& OutOperation) override;
-	virtual bool NativeOnDrop(const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
-
-	void UpdateSlotAfterSplit(int32 NewQuantity);
-	bool NativeOnDragOver(const FGeometry& InGeometry,const FDragDropEvent&InDragDropEvent,UDragDropOperation*InOperation);
-	void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation);
-
-
-
-	void RefreshVisual(); //pindah
-
+	virtual bool NativeOnDrop(
+		const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
 
 private:
-	bool bIsHovered = false;
+	void RefreshVisual();
 
-	int32 PreviewQuantity = -1; // -1 = tidak ada preview
+	int32 SlotIndex = INDEX_NONE;
+	FInventorySlot SlotData;
+	const FDataItem* ItemRow = nullptr;
+
+	UPROPERTY()
+	UInventoryWidget* InventoryWidgetRef;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* ItemIcon;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* ItemQuantity;
+
+	UPROPERTY(EditDefaultsOnly, Category="Drag")
+	TSubclassOf<UDragItemVisual> DragVisualClass;
 };

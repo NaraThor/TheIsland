@@ -18,34 +18,51 @@ void UMainMenu::NativeConstruct()
 }
 
 bool UMainMenu::NativeOnDrop(
-	const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation)
+	const FGeometry& InGeometry,
+	const FDragDropEvent& InDragDropEvent,
+	UDragDropOperation* InOperation)
 {
-	const UItemDragDropOperation* ItemDragDrop = Cast<UItemDragDropOperation>(InOperation);
+	const UItemDragDropOperation* DragOp =
+		Cast<UItemDragDropOperation>(InOperation);
 
-	if (!ItemDragDrop)
+	if (!DragOp)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Error 1"));
+		UE_LOG(LogTemp, Warning, TEXT("Invalid Drag Operation"));
 		return false;
 	}
 
-	if (ItemDragDrop->ItemID == NAME_None)
+	if (DragOp->ItemID == NAME_None)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Error 2"));
+		UE_LOG(LogTemp, Warning, TEXT("Invalid ItemID"));
 		return false;
 	}
 
-	ACharacterOrigin* Player = Cast<ACharacterOrigin>(GetOwningPlayerPawn());
-	if (!Player) return true;
+	if (DragOp->FromSlotIndex == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid FromSlotIndex"));
+		return false;
+	}
 
-	UInventory_Component* Inv = Player->GetInventory();   // << BENAR
-	if (!Inv) return true;
+	ACharacterOrigin* Player =
+		Cast<ACharacterOrigin>(GetOwningPlayerPawn());
+	if (!Player)
+		return true;
 
-	// Drop berdasarkan slot index
-	Inv->DropItemBySlotIndex(ItemDragDrop->SlotIndex, ItemDragDrop->DragQuantity);
+	UInventory_Component* Inventory =
+		Player->GetInventory();
+	if (!Inventory)
+		return true;
 
-	UE_LOG(LogTemp, Warning, TEXT("Dropped %s x%d"),
-		*ItemDragDrop->ItemID.ToString(),
-		ItemDragDrop->DragQuantity);
+	Inventory->DropItemBySlotIndex(
+		DragOp->FromSlotIndex,
+		DragOp->DragQuantity
+	);
+
+	UE_LOG(LogTemp, Warning,
+		TEXT("Dropped %s x%d from slot %d"),
+		*DragOp->ItemID.ToString(),
+		DragOp->DragQuantity,
+		DragOp->FromSlotIndex);
 
 	return true;
 }
