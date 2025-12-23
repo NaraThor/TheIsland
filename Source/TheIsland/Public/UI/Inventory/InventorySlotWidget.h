@@ -33,8 +33,12 @@ protected:
 	virtual bool NativeOnDrop(
 		const FGeometry& InGeometry,const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
 
+	virtual FReply NativeOnMouseWheel(
+		const FGeometry& InGeometry,const FPointerEvent& InMouseEvent)override;
+	
 private:
 	void RefreshVisual();
+	void CancelSplit();
 
 	int32 SlotIndex = INDEX_NONE;
 	FInventorySlot SlotData;
@@ -51,4 +55,14 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="Drag")
 	TSubclassOf<UDragItemVisual> DragVisualClass;
+
+	//Scroll Split
+	bool bSplitModeActive = false;
+	int32 SplitPreviewQuantity = 0;
+	int32 OriginalQuantity = 0;
+
+	UPROPERTY()
+	UDragItemVisual* SplitVisual = nullptr;
+
+	
 };

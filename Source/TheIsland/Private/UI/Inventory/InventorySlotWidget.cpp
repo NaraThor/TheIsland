@@ -1,5 +1,6 @@
 #include "UI/Inventory/InventorySlotWidget.h"
 
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Handler/ItemDragDropOperation.h"
@@ -29,81 +30,105 @@ FReply UInventorySlotWidget::NativeOnMouseButtonDown(
 			TakeWidget(), EKeys::LeftMouseButton);
 	}
 
+	if (bSplitModeActive &&
+		Event.GetEffectingButton() == EKeys::RightMouseButton)
+	{
+		CancelSplit();
+		return FReply::Handled();
+	}
+
 	return FReply::Unhandled();
 }
 
 void UInventorySlotWidget::NativeOnDragDetected(
-	const FGeometry& InGeometry, const FPointerEvent& Event, UDragDropOperation*& OutOperation)
+	const FGeometry&, const FPointerEvent&, UDragDropOperation*& OutOperation)
 {
-	if (SlotData.IsEmpty())
-		return;
-
-	// Buat DragDropOperation custom
 	auto* DragOp = NewObject<UItemDragDropOperation>(this);
 
 	DragOp->ItemID        = SlotData.ItemID;
 	DragOp->FromSlotIndex = SlotIndex;
 
-	// Tentukan jumlah drag & tipe (normal atau split)
-	if (Event.IsControlDown() && SlotData.Quantity > 1)
+	if (bSplitModeActive)
 	{
-		// Split drag, ambil setengah
-		const int32 SplitQty = FMath::CeilToInt(SlotData.Quantity / 2.f);
 		DragOp->DragType     = EDragType::DT_Split;
-		DragOp->bIsSplitDrag = true;
-		DragOp->DragQuantity = SplitQty;
-
-		// Kurangi slot sumber secara langsung
-		SlotData.Quantity -= SplitQty;
+		DragOp->DragQuantity = SplitPreviewQuantity;
 	}
 	else
 	{
-		// Normal drag, ambil semua
 		DragOp->DragType     = EDragType::DT_Normal;
 		DragOp->DragQuantity = SlotData.Quantity;
-
-		// Hilangkan semua dari slot
-		SlotData.Quantity = 0;
 	}
 
-	// Refresh slot visual agar slot asal update
-	RefreshVisual();
-
-	// --- Buat drag visual ---
-	if (DragVisualClass && ItemRow) // Pastikan class & item valid
+	if (DragVisualClass && ItemRow)
 	{
-		UDragItemVisual* Visual = CreateWidget<UDragItemVisual>(GetOwningPlayer(), DragVisualClass);
-		if (Visual)
-		{
-			Visual->ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
-			Visual->ItemQuantity->SetText(FText::AsNumber(DragOp->DragQuantity));
+		auto* Visual = CreateWidget<UDragItemVisual>(
+			GetOwningPlayer(), DragVisualClass);
 
-			DragOp->DefaultDragVisual = Visual;
-			DragOp->Pivot = EDragPivot::CenterCenter;
+		Visual->ItemIcon->SetBrushFromTexture(
+			ItemRow->ItemAsset.Icon);
 
-			// Simpan pointer ke visual agar bisa diupdate realtime
-			DragOp->DragVisual = Visual;
-		}
+		Visual->ItemQuantity->SetText(
+			FText::AsNumber(DragOp->DragQuantity));
+
+		DragOp->DefaultDragVisual = Visual;
+		DragOp->Pivot = EDragPivot::CenterCenter;
 	}
 
-	// Kirim operation ke engine
+	// reset preview state
+	bSplitModeActive = false;
+	SplitPreviewQuantity = 0;
+	OriginalQuantity = 0;
+
 	OutOperation = DragOp;
 }
 
-
 bool UInventorySlotWidget::NativeOnDrop(
-	const FGeometry&,const FDragDropEvent&,UDragDropOperation* InOperation)
+	const FGeometry&, const FDragDropEvent&, UDragDropOperation* InOperation)
 {
-	if (auto* DragOp =
-		Cast<UItemDragDropOperation>(InOperation))
+	if (auto* DragOp = Cast<UItemDragDropOperation>(InOperation))
 	{
-		if (InventoryWidgetRef)
+		if (!InventoryWidgetRef)
+			return false;
+
+		// Drop ke slot yang sama → batal
+		if (DragOp->FromSlotIndex == SlotIndex)
 		{
-			InventoryWidgetRef->HandleSlotDrop(this, DragOp);
+			InventoryWidgetRef->RefreshInventory();
 			return true;
 		}
+
+		InventoryWidgetRef->HandleSlotDrop(this, DragOp);
+		return true;
 	}
 	return false;
+}
+
+FReply UInventorySlotWidget::NativeOnMouseWheel(
+	const FGeometry&, const FPointerEvent& Event)
+{
+	if (SlotData.IsEmpty() || SlotData.Quantity <= 1)
+		return FReply::Unhandled();
+
+	const float Delta = Event.GetWheelDelta();
+	if (Delta == 0.f)
+		return FReply::Unhandled();
+
+	if (!bSplitModeActive)
+	{
+		bSplitModeActive = true;
+		OriginalQuantity = SlotData.Quantity;
+		SplitPreviewQuantity = 1;
+	}
+
+	SplitPreviewQuantity += (Delta > 0 ? 1 : -1);
+	SplitPreviewQuantity = FMath::Clamp(
+		SplitPreviewQuantity, 1, OriginalQuantity - 1);
+
+	// preview di slot asal
+	ItemQuantity->SetText(
+		FText::AsNumber(OriginalQuantity - SplitPreviewQuantity));
+
+	return FReply::Handled();
 }
 
 void UInventorySlotWidget::RefreshVisual()
@@ -123,3 +148,13 @@ void UInventorySlotWidget::RefreshVisual()
 	ItemQuantity->SetText(
 		FText::AsNumber(SlotData.Quantity));
 }
+
+void UInventorySlotWidget::CancelSplit()
+{
+	bSplitModeActive     = false;
+	SplitPreviewQuantity = 0;
+	OriginalQuantity     = 0;
+
+	RefreshVisual();
+}
+
