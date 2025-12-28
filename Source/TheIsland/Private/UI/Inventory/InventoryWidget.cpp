@@ -60,7 +60,11 @@ void UInventoryWidget::HandleSlotDrop(
 	const int32 To   = TargetSlot->GetSlotIndex();
 
 	if (From == To)
+	{
+		RefreshInventory(); 
+		DragOp->bDroppedSuccessfully = false;
 		return;
+	}
 
 	switch (DragOp->DragType)
 	{

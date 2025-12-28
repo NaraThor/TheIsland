@@ -101,6 +101,7 @@ bool UInventorySlotWidget::NativeOnDrop(
 		return true;
 	}
 	return false;
+	
 }
 
 FReply UInventorySlotWidget::NativeOnMouseWheel(
