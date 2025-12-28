@@ -40,6 +40,12 @@ private:
 	void RefreshVisual();
 	void CancelSplit();
 
+protected:
+	virtual void NativeTick(
+		const FGeometry& MyGeometry,
+		float InDeltaTime) override;
+	
+private:
 	int32 SlotIndex = INDEX_NONE;
 	FInventorySlot SlotData;
 	const FDataItem* ItemRow = nullptr;
@@ -63,6 +69,8 @@ private:
 
 	UPROPERTY()
 	UDragItemVisual* SplitVisual = nullptr;
+
+
 
 	
 };

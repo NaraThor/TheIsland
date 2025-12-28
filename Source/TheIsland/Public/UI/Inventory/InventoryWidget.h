@@ -16,6 +16,9 @@ class THEISLAND_API UInventoryWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	// === MARK: tambah referensi drag slot ===
+	UPROPERTY()
+	UInventorySlotWidget* DraggedSlot = nullptr;
 
 	UFUNCTION()
 	void RefreshInventory();

@@ -1,6 +1,7 @@
 #include "UI/Inventory/InventorySlotWidget.h"
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Handler/ItemDragDropOperation.h"
@@ -104,6 +105,7 @@ bool UInventorySlotWidget::NativeOnDrop(
 	
 }
 
+// === MARK: Scroll pick (drag) ===
 FReply UInventorySlotWidget::NativeOnMouseWheel(
 	const FGeometry&, const FPointerEvent& Event)
 {
@@ -114,20 +116,39 @@ FReply UInventorySlotWidget::NativeOnMouseWheel(
 	if (Delta == 0.f)
 		return FReply::Unhandled();
 
-	if (!bSplitModeActive)
+	if (!InventoryWidgetRef->DraggedSlot) // PICK via scroll
 	{
+		InventoryWidgetRef->DraggedSlot = this;
+
 		bSplitModeActive = true;
 		OriginalQuantity = SlotData.Quantity;
 		SplitPreviewQuantity = 1;
+
+		// Buat drag visual
+		if (DragVisualClass && ItemRow)
+		{
+			SplitVisual = CreateWidget<UDragItemVisual>(GetOwningPlayer(), DragVisualClass);
+			if (SplitVisual)
+			{
+				SplitVisual->ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
+				SplitVisual->ItemQuantity->SetText(FText::AsNumber(SplitPreviewQuantity));
+				SplitVisual->AddToViewport(9999);
+			}
+		}
+
+		// Update slot visual preview
+		ItemQuantity->SetText(FText::AsNumber(OriginalQuantity - SplitPreviewQuantity));
 	}
+	else // scroll ketika sudah pick = adjust split quantity
+	{
+		SplitPreviewQuantity += (Delta > 0 ? 1 : -1);
+		SplitPreviewQuantity = FMath::Clamp(SplitPreviewQuantity, 1, OriginalQuantity - 1);
 
-	SplitPreviewQuantity += (Delta > 0 ? 1 : -1);
-	SplitPreviewQuantity = FMath::Clamp(
-		SplitPreviewQuantity, 1, OriginalQuantity - 1);
+		if (SplitVisual)
+			SplitVisual->ItemQuantity->SetText(FText::AsNumber(SplitPreviewQuantity));
 
-	// preview di slot asal
-	ItemQuantity->SetText(
-		FText::AsNumber(OriginalQuantity - SplitPreviewQuantity));
+		ItemQuantity->SetText(FText::AsNumber(OriginalQuantity - SplitPreviewQuantity));
+	}
 
 	return FReply::Handled();
 }
@@ -158,4 +179,28 @@ void UInventorySlotWidget::CancelSplit()
 
 	RefreshVisual();
 }
+
+// === MARK: Tick untuk drag visual mengikuti cursor ===
+void UInventorySlotWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (SplitVisual)
+	{
+		float MouseX = 0.f;
+		float MouseY = 0.f;
+
+		// Ambil PlayerController
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			// Dapatkan posisi mouse dalam viewport (scaled by DPI)
+			if (UWidgetLayoutLibrary::GetMousePositionScaledByDPI(PC, MouseX, MouseY))
+			{
+				FVector2D MousePos(MouseX, MouseY);
+				SplitVisual->SetPositionInViewport(MousePos, true); // true = bRemoveDPIScale
+			}
+		}
+	}
+}
+
 
