@@ -10,7 +10,8 @@ UENUM(BlueprintType)
 enum class EDragType : uint8
 {
 	DT_Normal,
-	DT_Split
+	DT_ScrollSplit,
+	DT_QuickSplit
 };
 
 UCLASS()

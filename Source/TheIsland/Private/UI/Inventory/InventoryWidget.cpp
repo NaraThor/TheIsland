@@ -72,7 +72,12 @@ void UInventoryWidget::HandleSlotDrop(
 		InventoryRef->MoveSlotToSlot(From, To);
 		break;
 
-	case EDragType::DT_Split:
+	case EDragType::DT_ScrollSplit:
+		InventoryRef->SplitItem(
+			From, To, DragOp->DragQuantity);
+		break;
+
+	case EDragType::DT_QuickSplit:
 		InventoryRef->SplitItem(
 			From, To, DragOp->DragQuantity);
 		break;

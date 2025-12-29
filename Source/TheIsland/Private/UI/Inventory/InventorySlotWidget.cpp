@@ -25,31 +25,44 @@ FReply UInventorySlotWidget::NativeOnMouseButtonDown(
 	if (SlotData.IsEmpty())
 		return FReply::Unhandled();
 
-	// ===== CANCEL scroll drag jika left click normal =====
-	if (bSplitModeActive && Event.GetEffectingButton() == EKeys::LeftMouseButton)
+	const bool bLeftClick  = Event.GetEffectingButton() == EKeys::LeftMouseButton;
+	const bool bCtrlHeld   = Event.IsControlDown();
+
+	// === CANCEL SCROLL SPLIT jika ada drag lain ===
+	if (bSplitModeActive && bLeftClick)
 	{
-		CancelSplit(); // hilangkan drag visual scroll
-		if (InventoryWidgetRef && InventoryWidgetRef->DraggedSlot == this)
-		{
+		CancelSplit();
+		if (InventoryWidgetRef)
 			InventoryWidgetRef->DraggedSlot = nullptr;
-		}
-		// Lanjut ke detect drag normal di bawah
 	}
 
-	// LEFT CLICK → start normal drag
-	if (Event.GetEffectingButton() == EKeys::LeftMouseButton)
+	// === QUICK SPLIT (Ctrl + Hold Click) ===
+	if (bLeftClick && bCtrlHeld && SlotData.Quantity > 1)
 	{
-		return FReply::Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
+		bQuickSplitActive  = true;
+		QuickSplitQuantity = SlotData.Quantity / 2;
+
+		// Update preview slot
+		ItemQuantity->SetText(
+			FText::AsNumber(SlotData.Quantity - QuickSplitQuantity));
+
+		return FReply::Handled().DetectDrag(
+			TakeWidget(), EKeys::LeftMouseButton);
 	}
 
-	// RIGHT CLICK → cancel scroll drag
+	// === NORMAL DRAG ===
+	if (bLeftClick)
+	{
+		return FReply::Handled().DetectDrag(
+			TakeWidget(), EKeys::LeftMouseButton);
+	}
+
+	// === RIGHT CLICK → cancel scroll split ===
 	if (Event.GetEffectingButton() == EKeys::RightMouseButton && bSplitModeActive)
 	{
 		CancelSplit();
-		if (InventoryWidgetRef && InventoryWidgetRef->DraggedSlot == this)
-		{
+		if (InventoryWidgetRef)
 			InventoryWidgetRef->DraggedSlot = nullptr;
-		}
 		return FReply::Handled();
 	}
 
@@ -64,17 +77,26 @@ void UInventorySlotWidget::NativeOnDragDetected(
 	DragOp->ItemID        = SlotData.ItemID;
 	DragOp->FromSlotIndex = SlotIndex;
 
-	if (bSplitModeActive)
+	// === QUICK SPLIT ===
+	if (bQuickSplitActive)
 	{
-		DragOp->DragType     = EDragType::DT_Split;
+		DragOp->DragType     = EDragType::DT_QuickSplit;
+		DragOp->DragQuantity = QuickSplitQuantity;
+	}
+	// === SCROLL SPLIT ===
+	else if (bSplitModeActive)
+	{
+		DragOp->DragType     = EDragType::DT_ScrollSplit;
 		DragOp->DragQuantity = SplitPreviewQuantity;
 	}
+	// === NORMAL ===
 	else
 	{
 		DragOp->DragType     = EDragType::DT_Normal;
 		DragOp->DragQuantity = SlotData.Quantity;
 	}
 
+	// === Drag Visual ===
 	if (DragVisualClass && ItemRow)
 	{
 		auto* Visual = CreateWidget<UDragItemVisual>(
@@ -90,10 +112,12 @@ void UInventorySlotWidget::NativeOnDragDetected(
 		DragOp->Pivot = EDragPivot::CenterCenter;
 	}
 
-	// reset preview state
-	bSplitModeActive = false;
+	// === RESET STATE ===
+	bQuickSplitActive   = false;
+	QuickSplitQuantity  = 0;
+	bSplitModeActive    = false;
 	SplitPreviewQuantity = 0;
-	OriginalQuantity = 0;
+	OriginalQuantity    = 0;
 
 	OutOperation = DragOp;
 }

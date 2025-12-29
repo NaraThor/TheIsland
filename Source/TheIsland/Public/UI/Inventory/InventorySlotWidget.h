@@ -71,6 +71,10 @@ private:
 	UPROPERTY()
 	UDragItemVisual* SplitVisual = nullptr;
 
+	// Quick Split
+	bool bQuickSplitActive = false;
+	int32 QuickSplitQuantity = 0;
+
 
 
 	
