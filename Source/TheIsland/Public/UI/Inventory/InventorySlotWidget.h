@@ -40,6 +40,7 @@ private:
 	void RefreshVisual();
 	void CancelSplit();
 
+
 protected:
 	virtual void NativeTick(
 		const FGeometry& MyGeometry,

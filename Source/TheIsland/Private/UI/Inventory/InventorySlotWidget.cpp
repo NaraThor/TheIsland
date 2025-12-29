@@ -25,16 +25,31 @@ FReply UInventorySlotWidget::NativeOnMouseButtonDown(
 	if (SlotData.IsEmpty())
 		return FReply::Unhandled();
 
-	if (Event.GetEffectingButton() == EKeys::LeftMouseButton)
+	// ===== CANCEL scroll drag jika left click normal =====
+	if (bSplitModeActive && Event.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		return FReply::Handled().DetectDrag(
-			TakeWidget(), EKeys::LeftMouseButton);
+		CancelSplit(); // hilangkan drag visual scroll
+		if (InventoryWidgetRef && InventoryWidgetRef->DraggedSlot == this)
+		{
+			InventoryWidgetRef->DraggedSlot = nullptr;
+		}
+		// Lanjut ke detect drag normal di bawah
 	}
 
-	if (bSplitModeActive &&
-		Event.GetEffectingButton() == EKeys::RightMouseButton)
+	// LEFT CLICK → start normal drag
+	if (Event.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		return FReply::Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
+	}
+
+	// RIGHT CLICK → cancel scroll drag
+	if (Event.GetEffectingButton() == EKeys::RightMouseButton && bSplitModeActive)
 	{
 		CancelSplit();
+		if (InventoryWidgetRef && InventoryWidgetRef->DraggedSlot == this)
+		{
+			InventoryWidgetRef->DraggedSlot = nullptr;
+		}
 		return FReply::Handled();
 	}
 
@@ -112,35 +127,47 @@ FReply UInventorySlotWidget::NativeOnMouseWheel(
 	if (SlotData.IsEmpty() || SlotData.Quantity <= 1)
 		return FReply::Unhandled();
 
-	const float Delta = Event.GetWheelDelta();
+	float Delta = Event.GetWheelDelta();
 	if (Delta == 0.f)
 		return FReply::Unhandled();
 
-	if (!InventoryWidgetRef->DraggedSlot) // PICK via scroll
+	// Jika tidak ada drag aktif atau drag sedang di slot lain → switch drag ke slot ini
+	if (!InventoryWidgetRef->DraggedSlot || InventoryWidgetRef->DraggedSlot != this)
 	{
+		// Cancel drag sebelumnya
+		if (InventoryWidgetRef->DraggedSlot)
+		{
+			InventoryWidgetRef->DraggedSlot->CancelSplit();
+		}
+
+		// Set slot ini sebagai drag baru
 		InventoryWidgetRef->DraggedSlot = this;
 
 		bSplitModeActive = true;
 		OriginalQuantity = SlotData.Quantity;
 		SplitPreviewQuantity = 1;
 
-		// Buat drag visual
+		// Buat drag visual baru
 		if (DragVisualClass && ItemRow)
 		{
+			if (SplitVisual)
+				SplitVisual->RemoveFromParent(); // hapus visual lama
+
 			SplitVisual = CreateWidget<UDragItemVisual>(GetOwningPlayer(), DragVisualClass);
 			if (SplitVisual)
 			{
 				SplitVisual->ItemIcon->SetBrushFromTexture(ItemRow->ItemAsset.Icon);
 				SplitVisual->ItemQuantity->SetText(FText::AsNumber(SplitPreviewQuantity));
-				SplitVisual->AddToViewport(9999);
+				SplitVisual->AddToViewport(9999); // pastikan selalu di atas
 			}
 		}
 
-		// Update slot visual preview
+		// Preview slot asal
 		ItemQuantity->SetText(FText::AsNumber(OriginalQuantity - SplitPreviewQuantity));
 	}
-	else // scroll ketika sudah pick = adjust split quantity
+	else
 	{
+		// Scroll di slot yang sama → adjust quantity
 		SplitPreviewQuantity += (Delta > 0 ? 1 : -1);
 		SplitPreviewQuantity = FMath::Clamp(SplitPreviewQuantity, 1, OriginalQuantity - 1);
 
@@ -177,6 +204,14 @@ void UInventorySlotWidget::CancelSplit()
 	SplitPreviewQuantity = 0;
 	OriginalQuantity     = 0;
 
+
+	// Hapus drag visual dari viewport
+	if (SplitVisual)
+	{
+		SplitVisual->RemoveFromParent();
+		SplitVisual = nullptr; // reset pointer
+	}
+	
 	RefreshVisual();
 }
 
@@ -202,5 +237,3 @@ void UInventorySlotWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 		}
 	}
 }
-
-
