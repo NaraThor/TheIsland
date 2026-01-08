@@ -74,18 +74,30 @@ void AItemOrigin::InitializePickup()
 
 void AItemOrigin::InitializeDrop(FName InItemID, int32 InQuantity)
 {
+	bIsDroppedItem = true;
+
 	ItemID   = InItemID;
 	Quantity = InQuantity;
 
 	if (!ItemRowHandle.DataTable)
-		return;
-
-	const FDataItem* Row = ItemRowHandle.DataTable->FindRow<FDataItem>(ItemID, TEXT("InitializeDrop"));
-	if (!Row)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Drop: Item ID '%s' not found in table"), *ItemID.ToString());
+		UE_LOG(LogTemp, Error, TEXT("Drop failed: Missing DataTable"));
 		return;
 	}
+
+	ItemRowHandle.RowName = ItemID;
+
+	const FDataItem* Row =
+		ItemRowHandle.GetRow<FDataItem>("InitializeDrop");
+
+	if (!Row)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("Drop: Item ID '%s' not found"), *ItemID.ToString());
+		return;
+	}
+
+	Quantity = FMath::Clamp(Quantity, 1, Row->ItemNumeric.MaxStack);
 
 	UpdateVisualFromData(Row);
 }
@@ -172,12 +184,27 @@ void AItemOrigin::TakePickup(ACharacterOrigin* Taker)
    ENGINE
    ============================================================ */
 
+void AItemOrigin::SetItemDataTable(
+	UDataTable* InDataTable)
+{
+	if (!InDataTable)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ItemOrigin: SetItemDataTable nullptr"));
+		return;
+	}
+
+	ItemRowHandle.DataTable = InDataTable;
+}
+
 void AItemOrigin::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Initial untuk spawn natural
-	InitializePickup();
+	if (!bIsDroppedItem)
+	{
+		// Initial untuk spawn natural
+		InitializePickup();
+	}
 }
 
 /* ============================================================

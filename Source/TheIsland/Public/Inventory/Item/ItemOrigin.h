@@ -26,8 +26,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void InitializeDrop(FName InItemID, int32 InQuantity);
 
+	
 	FORCEINLINE FName GetItemID() const { return ItemID; }
 	FORCEINLINE int32 GetQuantity() const { return Quantity; }
+
+	void SetItemDataTable(UDataTable* InDataTable);
 
 protected:
 	virtual void BeginPlay() override;
@@ -54,6 +57,10 @@ private:
 	void UpdateVisualFromData(const FDataItem* ItemData);
 	void TakePickup(ACharacterOrigin* Taker);
 
+	UPROPERTY(VisibleInstanceOnly, Category="Item|Runtime")
+	bool bIsDroppedItem = false;
+
+	
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif

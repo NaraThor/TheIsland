@@ -6,6 +6,21 @@
 #include "UI/Inventory/InventorySlotWidget.h"
 #include "Handler/ItemDragDropOperation.h"
 
+void UInventoryWidget::DropItemToWorld(
+	int32 FromSlotIndex, int32 Quantity)
+{
+	if (!InventoryRef || !PlayerCharacter)
+		return;
+
+	InventoryRef->DropItemToWorld(
+		FromSlotIndex,
+		Quantity,
+		PlayerCharacter->GetActorLocation() +
+		PlayerCharacter->GetActorForwardVector() * 150.f,
+		PlayerCharacter->GetActorRotation()
+	);
+}
+
 void UInventoryWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();

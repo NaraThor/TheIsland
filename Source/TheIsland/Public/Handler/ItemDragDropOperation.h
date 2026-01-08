@@ -31,5 +31,9 @@ public:
 
 	// Pointer ke visual widget
 	UPROPERTY()
-	UDragItemVisual* DragVisual = nullptr; 
+	UDragItemVisual* DragVisual = nullptr;
+
+	bool bDroppedOnSlot = false;
+
+	
 };

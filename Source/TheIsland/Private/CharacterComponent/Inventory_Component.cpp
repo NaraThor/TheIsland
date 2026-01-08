@@ -1,5 +1,6 @@
 #include "CharacterComponent/Inventory_Component.h"
 #include "Inventory/DataStruct/DataItem.h"
+#include "Inventory/Item/ItemOrigin.h"
 
 // ----------------------------------------------------------
 // CONSTRUCTOR
@@ -96,6 +97,50 @@ int32 UInventory_Component::FindSlotWithItem(
     }
 
     return INDEX_NONE;
+}
+
+bool UInventory_Component::DropItemToWorld(
+    int32 SlotIndex, int32 Quantity,
+    const FVector& DropLocation,
+    const FRotator& DropRotation)
+{
+    if (!InventorySlots.IsValidIndex(SlotIndex))
+        return false;
+
+    FInventorySlot& Slot = InventorySlots[SlotIndex];
+    if (Slot.ItemID.IsNone() || Quantity <= 0)
+        return false;
+
+    Quantity = FMath::Clamp(Quantity, 1, Slot.Quantity);
+
+    UWorld* World = GetWorld();
+    if (!World)
+        return false;
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    AItemOrigin* DroppedItem = World->SpawnActor<AItemOrigin>(
+        AItemOrigin::StaticClass(),
+        DropLocation,
+        DropRotation,
+        SpawnParams
+    );
+
+    if (!DroppedItem)
+        return false;
+
+    // 🔑 FIX UTAMA
+    DroppedItem->SetItemDataTable(ItemDataTable);
+    DroppedItem->InitializeDrop(Slot.ItemID, Quantity);
+
+    Slot.Quantity -= Quantity;
+    if (Slot.Quantity <= 0)
+        Slot = FInventorySlot();
+
+    OnInventoryUpdated.Broadcast();
+    return true;
 }
 
 // ----------------------------------------------------------
@@ -220,33 +265,41 @@ void UInventory_Component::MoveSlotToSlot(int32 Source, int32 Dest)
 bool UInventory_Component::DropItemBySlotIndex(
     int32 SlotIndex, int32 Quantity)
 {
-    // Validasi index
     if (!InventorySlots.IsValidIndex(SlotIndex))
         return false;
 
     FInventorySlot& Slot = InventorySlots[SlotIndex];
-
-    // Slot kosong
-    if (Slot.ItemID == NAME_None || Slot.Quantity <= 0)
+    if (Slot.IsEmpty() || Quantity <= 0)
         return false;
 
-    // Quantity kurang
-    if (Slot.Quantity < Quantity)
+    const FDataItem* Row = GetItemRow(Slot.ItemID);
+    if (!Row)
         return false;
 
-    // Kurangi jumlah
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    AItemOrigin* DroppedItem = GetWorld()->SpawnActor<AItemOrigin>(
+        AItemOrigin::StaticClass(),
+        GetOwner()->GetActorLocation() +
+        GetOwner()->GetActorForwardVector() * 150.f,
+        FRotator::ZeroRotator,
+        Params
+    );
+
+    if (!DroppedItem)
+        return false;
+
+    // 🔑 INI YANG SEBELUMNYA HILANG
+    DroppedItem->SetItemDataTable(ItemDataTable);
+    DroppedItem->InitializeDrop(Slot.ItemID, Quantity);
+
     Slot.Quantity -= Quantity;
-
-    // Jika habis, kosongkan slot
     if (Slot.Quantity <= 0)
-    {
-        Slot.ItemID = NAME_None;
-        Slot.Quantity = 0;
-    }
+        Slot = FInventorySlot();
 
-    // Update UI
     OnInventoryUpdated.Broadcast();
-
     return true;
 }
 

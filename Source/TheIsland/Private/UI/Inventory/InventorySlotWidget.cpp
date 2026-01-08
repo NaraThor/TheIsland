@@ -71,6 +71,7 @@ void UInventorySlotWidget::NativeOnDragDetected(
 	UDragDropOperation*& OutOperation)
 {
 	UItemDragDropOperation* DragOp = NewObject<UItemDragDropOperation>(this);
+	DragOp->ItemID        = SlotData.ItemID;
 	DragOp->FromSlotIndex = SlotIndex;
 
 	// Tentukan jumlah yang di-drag
@@ -133,18 +134,26 @@ void UInventorySlotWidget::NativeOnDragCancelled(
 {
 	Super::NativeOnDragCancelled(InDragDropEvent, InOperation);
 
-	UItemDragDropOperation* DragOp = Cast<UItemDragDropOperation>(InOperation);
-	if (DragOp)
-	{
-		// Kembalikan jumlah item yang di-drag ke slot asli
-		SlotData.Quantity += DragOp->DragQuantity;
-		
-	}
+	UItemDragDropOperation* DragOp =
+		Cast<UItemDragDropOperation>(InOperation);
 
-	bShiftHeld = false;
-	bRightAltHeld = false;
-	RefreshVisual();
+	if (!DragOp || !InventoryWidgetRef)
+		return;
 
+	// kalau ternyata drop ke slot, JANGAN spawn world
+	if (DragOp->bDroppedOnSlot)
+		return;
+
+	// =============================
+	// REAL DROP KE WORLD
+	// =============================
+	InventoryWidgetRef->DropItemToWorld(
+		DragOp->FromSlotIndex,
+		DragOp->DragQuantity
+	);
+
+	// Refresh UI
+	InventoryWidgetRef->RefreshInventory();
 }
 
 // =====================================================
@@ -161,6 +170,8 @@ bool UInventorySlotWidget::NativeOnDrop(
 	if (!DragOp || !InventoryWidgetRef)
 		return false;
 
+	DragOp->bDroppedOnSlot = true;
+	
 	InventoryWidgetRef->HandleSlotDrop(this, DragOp);
 	return true;
 }

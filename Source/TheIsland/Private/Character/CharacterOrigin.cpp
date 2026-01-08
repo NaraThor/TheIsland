@@ -193,3 +193,20 @@ void ACharacterOrigin::ToggleMenu()
 		UE_LOG(LogTemp, Error, TEXT("Failed to recover HUD reference."));
 	}
 }
+
+void ACharacterOrigin::DropItem(int32 SlotIndex,int32 Quantity)
+{
+	if (!PlayerInventory)
+		return;
+
+	FVector DropLocation =
+		GetActorLocation() +
+		GetActorForwardVector() * 120.f;
+
+	PlayerInventory->DropItemToWorld(
+		SlotIndex,
+		Quantity,
+		DropLocation,
+		GetActorRotation()
+	);
+}

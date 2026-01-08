@@ -111,6 +111,8 @@ protected:
 
 	void ToggleMenu();
 
+	void DropItem(int32 SlotIndex,int32 Quantity);
+
 public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 #include "MainMenu.generated.h"
 
+class UInventoryWidget;
 class ACharacterOrigin;
 
 UCLASS()
@@ -15,9 +16,12 @@ public:
 	UPROPERTY()
 	ACharacterOrigin* PlayerCharacter;
 
+	
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent,UDragDropOperation* InOperation) override;
-	
+
+	UInventoryWidget* InventoryWidgetRef;
 };

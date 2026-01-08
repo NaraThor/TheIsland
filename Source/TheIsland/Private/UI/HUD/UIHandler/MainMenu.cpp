@@ -22,24 +22,12 @@ bool UMainMenu::NativeOnDrop(
 	const FDragDropEvent& InDragDropEvent,
 	UDragDropOperation* InOperation)
 {
-	const UItemDragDropOperation* DragOp =
+	UItemDragDropOperation* DragOp =
 		Cast<UItemDragDropOperation>(InOperation);
 
-	if (!DragOp)
+	// invalid / sudah dihandle slot
+	if (!DragOp || DragOp->bDroppedSuccessfully)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Invalid Drag Operation"));
-		return false;
-	}
-
-	if (DragOp->ItemID == NAME_None)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Invalid ItemID"));
-		return false;
-	}
-
-	if (DragOp->FromSlotIndex == INDEX_NONE)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Invalid FromSlotIndex"));
 		return false;
 	}
 
@@ -53,6 +41,7 @@ bool UMainMenu::NativeOnDrop(
 	if (!Inventory)
 		return true;
 
+	// 🔥 DROP KE WORLD
 	Inventory->DropItemBySlotIndex(
 		DragOp->FromSlotIndex,
 		DragOp->DragQuantity

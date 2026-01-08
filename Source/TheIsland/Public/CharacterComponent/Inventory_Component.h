@@ -77,4 +77,8 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnInventoryUpdated OnInventoryUpdated;
 
+    UFUNCTION()
+    bool DropItemToWorld(int32 SlotIndex,int32 Quantity,const FVector& DropLocation,
+    const FRotator& DropRotation);
+
 };

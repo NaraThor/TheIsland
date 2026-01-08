@@ -33,6 +33,8 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UInventorySlotWidget> InventorySlotClass;
 
+	void DropItemToWorld(int32 FromSlotIndex, int32 Quantity);
+	
 protected:
 	virtual void NativeOnInitialized() override;
 
