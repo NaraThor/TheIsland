@@ -7,7 +7,6 @@
 UInventory_Component::UInventory_Component()
 {
     PrimaryComponentTick.bCanEverTick = false;
-
     
 }
 
@@ -254,66 +253,75 @@ bool UInventory_Component::DropItemBySlotIndex(
 bool UInventory_Component::SplitItem(
     int32 SourceSlot, int32 DestSlot, int32 SplitQuantity)
 {
-    // Validasi index
+    // ================= VALIDASI DASAR =================
     if (!IsValidSlot(SourceSlot) || !IsValidSlot(DestSlot))
         return false;
 
-    if (SplitQuantity <= 0)
+    if (SourceSlot == DestSlot)
         return false;
 
-    FInventorySlot* FromSlot = GetSlotPtr(SourceSlot);
-    FInventorySlot* ToSlot   = GetSlotPtr(DestSlot);
+    FInventorySlot& FromSlot = InventorySlots[SourceSlot];
+    FInventorySlot& ToSlot   = InventorySlots[DestSlot];
 
-    if (!FromSlot || FromSlot->IsEmpty())
+    if (FromSlot.IsEmpty())
         return false;
 
-    // Tidak boleh split semua item
-    if (SplitQuantity >= FromSlot->Quantity)
-        return false;
+    // ================= TENTUKAN JUMLAH SPLIT =================
+    int32 ActualSplitQty = SplitQuantity;
 
-    // === CASE 1: Slot tujuan kosong ===
-    if (!ToSlot || ToSlot->IsEmpty())
+    // QUICK SPLIT (HALF)
+    if (SplitQuantity < 0)
     {
-        ToSlot->ItemID   = FromSlot->ItemID;
-        ToSlot->Quantity = SplitQuantity;
+        ActualSplitQty = FromSlot.Quantity / 2;
+    }
 
-        FromSlot->Quantity -= SplitQuantity;
+    // Tidak boleh split 0 / semua
+    if (ActualSplitQty <= 0 || ActualSplitQty >= FromSlot.Quantity)
+        return false;
 
-        if (FromSlot->Quantity <= 0)
-            *FromSlot = FInventorySlot();
+    // ================= SLOT TUJUAN =================
+
+    // Case 1: Slot tujuan kosong
+    if (ToSlot.IsEmpty())
+    {
+        ToSlot.ItemID   = FromSlot.ItemID;
+        ToSlot.Quantity = ActualSplitQty;
+
+        FromSlot.Quantity -= ActualSplitQty;
+
+        if (FromSlot.Quantity <= 0)
+            FromSlot = FInventorySlot();
 
         OnInventoryUpdated.Broadcast();
         return true;
     }
 
-    // === CASE 2: Merge dengan item sama ===
-    if (ToSlot->ItemID == FromSlot->ItemID)
+    // Case 2: Slot tujuan berisi item sama → merge
+    if (ToSlot.ItemID == FromSlot.ItemID)
     {
-        const FDataItem* Row = GetItemRow(FromSlot->ItemID);
+        const FDataItem* Row = GetItemRow(FromSlot.ItemID);
+        if (!Row || !Row->ItemNumeric.IsStackable())
+            return false;
 
-        if (!Row) return false;
+        int32 MaxStack = Row->ItemNumeric.MaxStack;
+        int32 SpaceLeft = MaxStack - ToSlot.Quantity;
 
-        if (Row->ItemNumeric.IsStackable())
-        {
-            int32 MaxStack = Row->ItemNumeric.MaxStack;
+        if (SpaceLeft <= 0)
+            return false;
 
-            int32 Before = ToSlot->Quantity;
-            int32 After  = Before + SplitQuantity;
+        int32 Used = FMath::Min(SpaceLeft, ActualSplitQty);
 
-            ToSlot->Quantity = FMath::Min(After, MaxStack);
+        ToSlot.Quantity += Used;
+        FromSlot.Quantity -= Used;
 
-            int32 Used = ToSlot->Quantity - Before;
-            FromSlot->Quantity -= Used;
+        if (FromSlot.Quantity <= 0)
+            FromSlot = FInventorySlot();
 
-            if (FromSlot->Quantity <= 0)
-                *FromSlot = FInventorySlot();
-            
-            OnInventoryUpdated.Broadcast();
-            return true;
-        }
+        OnInventoryUpdated.Broadcast();
+        return true;
     }
 
-    // === CASE 3: Item beda → gagal split ===
+    // Case 3: Item beda → gagal
     return false;
 }
 

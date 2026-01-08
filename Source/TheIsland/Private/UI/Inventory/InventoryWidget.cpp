@@ -61,8 +61,8 @@ void UInventoryWidget::HandleSlotDrop(
 
 	if (From == To)
 	{
-		RefreshInventory(); 
 		DragOp->bDroppedSuccessfully = false;
+		RefreshInventory(); 
 		return;
 	}
 
@@ -72,17 +72,18 @@ void UInventoryWidget::HandleSlotDrop(
 		InventoryRef->MoveSlotToSlot(From, To);
 		break;
 
-	case EDragType::DT_ScrollSplit:
+	case EDragType::DT_HalfSplit:
 		InventoryRef->SplitItem(
 			From, To, DragOp->DragQuantity);
 		break;
 
-	case EDragType::DT_QuickSplit:
+	case EDragType::DT_SplitOne:
 		InventoryRef->SplitItem(
 			From, To, DragOp->DragQuantity);
 		break;
 	}
-
+	
+	UE_LOG(LogTemp, Warning, TEXT("DragType: %d"), (int32)DragOp->DragType);
 	DragOp->bDroppedSuccessfully = true;
 	RefreshInventory();
 }

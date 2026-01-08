@@ -4,6 +4,8 @@
 #include "Blueprint/UserWidget.h"
 #include "DragItemVisual.generated.h"
 
+struct FInventorySlot;
+struct FDataItem;
 class UBorder;
 class UImage;
 class UTextBlock;
@@ -13,7 +15,14 @@ class THEISLAND_API UDragItemVisual : public UUserWidget
 {
 	GENERATED_BODY()
 
-public: 
+public:
+	void InitVisual(
+			const FInventorySlot& InSlot,
+			const FDataItem* InItemRow
+		);
+	
+protected:
+	
 	UPROPERTY(VisibleAnywhere,Category="Drag Item Visual",meta=(BindWidget))
 	UBorder* ItemBorder;
 
